@@ -3,6 +3,11 @@ import {
   processCustomEvent,
   processSseData,
   parseSseBlock,
+  parseRemoteBlock,
+  parseRemoteUsage,
+  extractRemoteUsage,
+  splitSseEvents,
+  type RemoteSseChunk,
 } from "../src/main/sse-parser";
 
 // ─── parseSseBlock ──────────────────────────────────────
@@ -244,5 +249,176 @@ describe("processSseData", () => {
     const data = JSON.stringify({ id: "chatcmpl-123" });
     processSseData(data, { onChunk }, state);
     expect(onChunk).not.toHaveBeenCalled();
+  });
+});
+
+// ─── parseRemoteBlock ─────────────────────────────────────────────────────────
+
+describe("parseRemoteBlock", () => {
+  it("parses [DONE] as done", () => {
+    const result = parseRemoteBlock("data: [DONE]");
+    expect(result).toEqual({ delta: "", done: true });
+  });
+
+  it("parses standard content delta", () => {
+    const block = 'data: {"choices":[{"delta":{"content":"Hello"}}]}';
+    const result = parseRemoteBlock(block);
+    expect(result).toEqual({ delta: "Hello", done: false });
+  });
+
+  it("parses tool progress event", () => {
+    const block = 'event: hermes.tool.progress\ndata: {"tool":"search","emoji":"🔍","label":"Searching"}';
+    const result = parseRemoteBlock(block);
+    expect(result?.toolProgress).toBe("🔍 Searching");
+    expect(result?.done).toBe(false);
+  });
+
+  it("parses error in data", () => {
+    const block = 'data: {"error":{"message":"Rate limit exceeded"}}';
+    const result = parseRemoteBlock(block);
+    expect(result?.error).toBe("Rate limit exceeded");
+  });
+
+  it("returns null for unknown event type", () => {
+    const block = "event: unknown.event\ndata: {}";
+    const result = parseRemoteBlock(block);
+    expect(result).toBeNull();
+  });
+
+  it("returns null for malformed JSON data", () => {
+    const block = "data: not-json";
+    const result = parseRemoteBlock(block);
+    expect(result).toBeNull();
+  });
+
+  it("returns null when no data line", () => {
+    const result = parseRemoteBlock("event: something");
+    expect(result).toBeNull();
+  });
+
+  it("handles empty delta (no content)", () => {
+    const block = 'data: {"choices":[{"delta":{}}]}';
+    const result = parseRemoteBlock(block);
+    // parseRemoteBlock returns null for delta without content (no delta field)
+    expect(result).toBeNull();
+  });
+});
+
+// ─── parseRemoteUsage ────────────────────────────────────────────────────────
+
+describe("parseRemoteUsage", () => {
+  it("parses standard OpenAI-style usage", () => {
+    const usage = {
+      prompt_tokens: 100,
+      completion_tokens: 50,
+      total_tokens: 150,
+    };
+    const result = parseRemoteUsage(usage);
+    expect(result.promptTokens).toBe(100);
+    expect(result.completionTokens).toBe(50);
+    expect(result.totalTokens).toBe(150);
+  });
+
+  it("parses camelCase usage fields", () => {
+    const usage = {
+      promptTokens: 200,
+      completionTokens: 75,
+      totalTokens: 275,
+    };
+    const result = parseRemoteUsage(usage);
+    expect(result.promptTokens).toBe(200);
+    expect(result.completionTokens).toBe(75);
+    expect(result.totalTokens).toBe(275);
+  });
+
+  it("parses usage with cost and rate limits", () => {
+    const usage = {
+      prompt_tokens: 100,
+      completion_tokens: 50,
+      total_tokens: 150,
+      cost: 0.0023,
+      rate_limit_remaining: 42,
+      rate_limit_reset: 1700000000,
+    };
+    const result = parseRemoteUsage(usage);
+    expect(result.cost).toBe(0.0023);
+    expect(result.rateLimitRemaining).toBe(42);
+    expect(result.rateLimitReset).toBe(1700000000);
+  });
+
+  it("handles missing optional fields", () => {
+    const usage = {
+      prompt_tokens: 100,
+      completion_tokens: 50,
+      total_tokens: 150,
+    };
+    const result = parseRemoteUsage(usage);
+    expect(result.cost).toBeUndefined();
+    expect(result.rateLimitRemaining).toBeUndefined();
+    expect(result.rateLimitReset).toBeUndefined();
+  });
+
+  it("handles empty usage data", () => {
+    const result = parseRemoteUsage({});
+    expect(result.promptTokens).toBe(0);
+    expect(result.completionTokens).toBe(0);
+    expect(result.totalTokens).toBe(0);
+  });
+});
+
+// ─── extractRemoteUsage ─────────────────────────────────────────────────────
+
+describe("extractRemoteUsage", () => {
+  it("extracts usage from JSON data", () => {
+    const data = JSON.stringify({
+      choices: [{ delta: { content: "test" } }],
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    });
+    const result = extractRemoteUsage(data);
+    expect(result).not.toBeNull();
+    expect(result?.promptTokens).toBe(10);
+    expect(result?.completionTokens).toBe(5);
+  });
+
+  it("returns null when no usage field", () => {
+    const data = JSON.stringify({ choices: [{ delta: { content: "test" } }] });
+    const result = extractRemoteUsage(data);
+    expect(result).toBeNull();
+  });
+
+  it("returns null for invalid JSON", () => {
+    const result = extractRemoteUsage("not json");
+    expect(result).toBeNull();
+  });
+});
+
+// ─── splitSseEvents ─────────────────────────────────────────────────────────
+
+describe("splitSseEvents", () => {
+  it("splits by double newlines", () => {
+    const raw = "data: foo\n\ndata: bar\n\ndata: baz";
+    const events = splitSseEvents(raw);
+    expect(events).toEqual(["data: foo", "data: bar", "data: baz"]);
+  });
+
+  it("handles single events", () => {
+    const events = splitSseEvents("data: foo");
+    expect(events).toEqual(["data: foo"]);
+  });
+
+  it("filters empty strings", () => {
+    const raw = "data: foo\n\n\ndata: bar\n\n";
+    const events = splitSseEvents(raw);
+    expect(events).toEqual(["data: foo", "data: bar"]);
+  });
+
+  it("handles mixed line endings", () => {
+    const events = splitSseEvents("data: foo\ndata: bar");
+    expect(events.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("handles empty input", () => {
+    const events = splitSseEvents("");
+    expect(events).toEqual([]);
   });
 });

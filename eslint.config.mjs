@@ -19,6 +19,12 @@ export default defineConfig(
   },
   {
     files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        ecmaFeatures: { modules: true },
+        esModuleInterop: true,
+      },
+    },
     plugins: {
       'react-hooks': eslintPluginReactHooks,
       'react-refresh': eslintPluginReactRefresh

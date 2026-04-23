@@ -13,6 +13,7 @@ import {
 } from "./installer";
 import { getModelConfig, readEnv, getConnectionConfig } from "./config";
 import { stripAnsi } from "./utils";
+import { chatCompletion, configureCloudApi, healthCheck as cloudHealthCheck } from "./cloud-api";
 
 const LOCAL_API_URL = "http://127.0.0.1:8642";
 
@@ -771,4 +772,164 @@ export function restartGateway(profile?: string): void {
   setTimeout(() => {
     startGateway(profile);
   }, 500);
+}
+
+// ────────────────────────────────────────────────────
+//  HermesBridge: Unified Chat Interface (S1-BE-03)
+// ────────────────────────────────────────────────────
+
+export type BridgeMode = "local" | "cloud";
+
+let _bridgeMode: BridgeMode = "local";
+let _cloudInitialized = false;
+
+/**
+ * Get the current bridge mode.
+ */
+export function getMode(): BridgeMode {
+  return _bridgeMode;
+}
+
+/**
+ * Switch the bridge mode between local and cloud.
+ */
+export function switchMode(mode: BridgeMode): void {
+  if (_bridgeMode === mode) return;
+
+  _bridgeMode = mode;
+
+  if (mode === "cloud") {
+    // Initialize cloud API with connection config
+    const conn = getConnectionConfig();
+    if (conn.remoteUrl) {
+      configureCloudApi({ baseUrl: conn.remoteUrl });
+      _cloudInitialized = true;
+    }
+  }
+}
+
+/**
+ * Health check for the current mode.
+ * Returns status information for local gateway or cloud API.
+ */
+export async function healthCheck(): Promise<{
+  healthy: boolean;
+  mode: BridgeMode;
+  latencyMs?: number;
+  error?: string;
+}> {
+  if (_bridgeMode === "cloud" && _cloudInitialized) {
+    const result = await cloudHealthCheck();
+    return {
+      healthy: result.healthy,
+      mode: "cloud",
+      latencyMs: result.latencyMs,
+      error: result.error,
+    };
+  }
+
+  // Local mode: check API server
+  const start = Date.now();
+  const ready = await isApiServerReady();
+  return {
+    healthy: ready,
+    mode: "local",
+    latencyMs: Date.now() - start,
+    error: ready ? undefined : "Local API server not ready",
+  };
+}
+
+export interface ChatParams {
+  message: string;
+  profile?: string;
+  resumeSessionId?: string;
+  history?: Array<{ role: string; content: string }>;
+}
+
+export interface ChatResult {
+  abort: () => void;
+}
+
+/**
+ * Unified chat interface that works in both local and cloud mode.
+ * Automatically routes to the appropriate backend based on current mode.
+ */
+export async function chat(
+  params: ChatParams,
+  cb: ChatCallbacks,
+): Promise<ChatResult> {
+  // Ensure gateway is started in local mode
+  if (_bridgeMode === "local" && !isRemoteMode() && !isGatewayRunning()) {
+    startGateway(params.profile);
+  }
+
+  if (_bridgeMode === "cloud" || isRemoteMode()) {
+    // Use cloud API
+    const conn = getConnectionConfig();
+    if (!_cloudInitialized && conn.remoteUrl) {
+      configureCloudApi({
+        baseUrl: conn.remoteUrl,
+        apiKey: conn.apiKey,
+      });
+      _cloudInitialized = true;
+    }
+
+    // Convert history to cloud API format
+    const messages = params.history
+      ? params.history.map((m) => ({
+          role: m.role === "agent" ? "assistant" : (m.role as "user" | "assistant" | "system"),
+          content: m.content,
+        }))
+      : [];
+
+    messages.push({ role: "user", content: params.message });
+
+    const mc = getModelConfig(params.profile);
+
+    const handle = chatCompletion(
+      {
+        model: mc.model || "hermes-agent",
+        messages,
+        stream: true,
+      },
+      {
+        onChunk: (chunk) => {
+          if (chunk.error) {
+            cb.onError(chunk.error);
+            return;
+          }
+          if (chunk.usage) {
+            cb.onUsage?.({
+              promptTokens: chunk.usage.promptTokens,
+              completionTokens: chunk.usage.completionTokens,
+              totalTokens: chunk.usage.totalTokens,
+              cost: chunk.usage.cost,
+            });
+          }
+          if (chunk.delta) {
+            cb.onChunk(chunk.delta);
+          }
+        },
+        onDone: () => {
+          cb.onDone();
+        },
+        onError: (error) => {
+          cb.onError(error);
+        },
+      },
+    );
+
+    return handle;
+  }
+
+  // Local mode: use existing sendMessage via API or CLI
+  const handle = await sendMessage(
+    params.message,
+    cb,
+    params.profile,
+    params.resumeSessionId,
+    params.history,
+  );
+
+  return { abort: handle.abort };
 }

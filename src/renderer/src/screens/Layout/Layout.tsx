@@ -12,7 +12,7 @@ import Office from "../Office/Office";
 import Models from "../Models/Models";
 import Schedules from "../Schedules/Schedules";
 import RemoteNotice from "../../components/RemoteNotice";
-import hermeslogo from "../../assets/hermes.png";
+import hermeslogo from "../../assets/xct-agent.png";
 import {
   ChatBubble,
   Clock,
