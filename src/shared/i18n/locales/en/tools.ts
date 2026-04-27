@@ -58,4 +58,9 @@ export default {
     label: "Task Planning",
     description: "Create and manage to-do lists for complex tasks",
   },
+  mcpServers: "MCP Servers",
+  mcpDescription: "Model Context Protocol servers configured in config.yaml. Manage via <code>hermes mcp add/remove</code> in the terminal.",
+  http: "HTTP",
+  stdio: "stdio",
+  disabled: "disabled",
 } as const;

@@ -149,6 +149,7 @@ const MessageRow = memo(function MessageRow({
   onApprove,
   onDeny,
 }: MessageRowProps): React.JSX.Element {
+  const { t } = useI18n();
   return (
     <div className={`chat-message chat-message-${msg.role}`}>
       {msg.role === "user" ? (
@@ -172,10 +173,10 @@ const MessageRow = memo(function MessageRow({
               className="chat-approval-btn chat-approve"
               onClick={onApprove}
             >
-              Approve
+              {t("chat.approve")}
             </button>
             <button className="chat-approval-btn chat-deny" onClick={onDeny}>
-              Deny
+              {t("chat.deny")}
             </button>
           </div>
         )}
@@ -196,6 +197,7 @@ interface ModelGroup {
 }
 
 import { PROVIDERS } from "../../constants";
+import { useI18n } from "../../components/useI18n";
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -214,6 +216,7 @@ function Chat({
   onSessionStarted,
   onNewChat,
 }: ChatProps): React.JSX.Element {
+  const { t } = useI18n();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hermesSessionId, setHermesSessionId] = useState<string | null>(null);
@@ -653,7 +656,7 @@ function Chat({
         if (mem.memory.exists && mem.memory.content.trim()) {
           lines.push(mem.memory.content.trim());
         } else {
-          lines.push("_No memory entries yet._");
+          lines.push(t("memory.noMemoryEntries"));
         }
         lines.push(
           `\n**Stats:** ${mem.stats.totalSessions} sessions, ${mem.stats.totalMessages} messages`,
@@ -665,7 +668,7 @@ function Chat({
       case "/tools": {
         const tools = await window.hermesAPI.getToolsets(profile);
         if (!tools.length) {
-          pushLocalResponse("No toolsets found.");
+          pushLocalResponse(t("memory.noToolsetsFound"));
         } else {
           const rows = tools
             .map(
@@ -744,7 +747,7 @@ function Chat({
           }
           pushLocalResponse(md);
         } else {
-          pushLocalResponse("_No usage data yet. Send a message first._");
+          pushLocalResponse(t("chat.noUsageData"));
         }
         return true;
       }
@@ -755,12 +758,12 @@ function Chat({
           (grouped[c.category] ||= []).push(c);
         }
         const categoryLabels: Record<string, string> = {
-          chat: "Chat",
-          agent: "Agent",
-          tools: "Tools",
-          info: "Info",
+          chat: t("chat.categoryChat"),
+          agent: t("chat.categoryAgent"),
+          tools: t("chat.categoryTools"),
+          info: t("chat.categoryInfo"),
         };
-        let md = "**Available Commands**\n";
+        let md = `**${t("chat.availableCommands")}**\n`;
         for (const cat of ["chat", "agent", "tools", "info"]) {
           if (!grouped[cat]) continue;
           md += `\n**${categoryLabels[cat]}**\n`;
@@ -856,9 +859,9 @@ function Chat({
       currentModel
         ? currentModel.split("/").pop() || currentModel
         : currentProvider === "auto"
-          ? "Auto"
-          : "No model set",
-    [currentModel, currentProvider],
+          ? t("chat.auto")
+          : t("chat.noModel"),
+    [currentModel, currentProvider, t],
   );
 
   const lastMessageIsAgent = useMemo(
@@ -871,7 +874,9 @@ function Chat({
       <div className="chat-header">
         <div className="chat-header-left">
           <div className="chat-header-title">
-            {sessionId ? `Session ${sessionId.slice(-6)}` : "New Chat"}
+            {sessionId
+              ? t("chat.sessionTitle", { id: sessionId.slice(-6) })
+              : t("chat.title")}
           </div>
           {usage && (
             <span
@@ -902,11 +907,11 @@ function Chat({
               <Zap size={14} />
             </button>
             <div className="chat-fast-popover">
-              <strong>{fastMode ? "Fast Mode ON" : "Fast Mode"}</strong>
+              <strong>{fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}</strong>
               <span>
                 {fastMode
-                  ? "Priority processing active — lower latency on supported models. Click to disable."
-                  : "Enable priority processing for lower latency on OpenAI and Anthropic models."}
+                  ? t("chat.fastModeActive")
+                  : t("chat.fastModeInactive")}
               </span>
             </div>
           </div>
@@ -914,7 +919,7 @@ function Chat({
             <button
               className="btn-ghost chat-clear-btn"
               onClick={onNewChat}
-              title="New chat (Cmd+N)"
+              title={t("chat.newChat")}
             >
               <Plus size={16} />
             </button>
@@ -923,7 +928,7 @@ function Chat({
             <button
               className="btn-ghost chat-clear-btn"
               onClick={handleClear}
-              title="Clear chat"
+              title={t("chat.clearChat")}
             >
               <Trash size={16} />
             </button>
@@ -937,10 +942,8 @@ function Chat({
             <div className="chat-empty-icon">
               <img src={icon} width={64} height={64} alt="" />
             </div>
-            <div className="chat-empty-text">How can I help you today?</div>
-            <div className="chat-empty-hint">
-              Ask me to write code, answer questions, search the web, and more
-            </div>
+            <div className="chat-empty-text">{t("chat.emptyTitle")}</div>
+            <div className="chat-empty-hint">{t("chat.emptyHint")}</div>
             <div className="chat-empty-suggestions">
               <button
                 className="chat-suggestion"
@@ -950,7 +953,7 @@ function Chat({
                 }}
               >
                 <Search size={16} />
-                Search the web
+                {t("chat.suggestionSearch")}
               </button>
               <button
                 className="chat-suggestion"
@@ -960,7 +963,7 @@ function Chat({
                 }}
               >
                 <Bell size={16} />
-                Set a reminder
+                {t("chat.suggestionReminder")}
               </button>
               <button
                 className="chat-suggestion"
@@ -970,7 +973,7 @@ function Chat({
                 }}
               >
                 <Mail size={16} />
-                Summarize emails
+                {t("chat.suggestionEmail")}
               </button>
               <button
                 className="chat-suggestion"
@@ -982,7 +985,7 @@ function Chat({
                 }}
               >
                 <Code size={16} />
-                Write a script
+                {t("chat.suggestionScript")}
               </button>
               <button
                 className="chat-suggestion"
@@ -994,7 +997,7 @@ function Chat({
                 }}
               >
                 <Clock size={16} />
-                Schedule a cron job
+                {t("chat.suggestionSchedule")}
               </button>
               <button
                 className="chat-suggestion"
@@ -1004,7 +1007,7 @@ function Chat({
                 }}
               >
                 <ChartLine size={16} />
-                Analyze data
+                {t("chat.suggestionAnalyze")}
               </button>
             </div>
           </div>
@@ -1050,7 +1053,7 @@ function Chat({
           <div className="slash-menu" ref={slashMenuRef}>
             <div className="slash-menu-header">
               <Slash size={12} />
-              Commands
+              {t("chat.commandsTitle")}
             </div>
             <div className="slash-menu-list">
               {filteredSlashCommands.map((cmd, i) => (
@@ -1073,7 +1076,7 @@ function Chat({
           <textarea
             ref={inputRef}
             className="chat-input"
-            placeholder="Type a message... (Shift+Enter for new line)"
+            placeholder={t("chat.typeMessage")}
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
@@ -1085,7 +1088,7 @@ function Chat({
             <button
               className="chat-send-btn chat-stop-btn"
               onClick={handleAbort}
-              title="Stop"
+              title={t("common.stop")}
             >
               <Stop size={14} />
             </button>
@@ -1095,7 +1098,7 @@ function Chat({
                 <button
                   className="chat-btw-btn"
                   onClick={handleQuickAsk}
-                  title="Quick Ask (/btw) — side question that won't affect conversation context"
+                  title={t("chat.quickAskTitle")}
                 >
                   💭
                 </button>
@@ -1104,7 +1107,7 @@ function Chat({
                 className="chat-send-btn"
                 onClick={handleSend}
                 disabled={!input.trim()}
-                title="Send"
+                title={t("chat.send")}
               >
                 <Send size={16} />
               </button>
@@ -1129,7 +1132,7 @@ function Chat({
               {modelGroups.map((group) => (
                 <div key={group.provider} className="chat-model-group">
                   <div className="chat-model-group-label">
-                    {group.providerLabel}
+                    {t(group.providerLabel)}
                   </div>
                   {group.models.map((m) => (
                     <button
@@ -1147,7 +1150,7 @@ function Chat({
               ))}
 
               <div className="chat-model-group">
-                <div className="chat-model-group-label">Custom</div>
+                <div className="chat-model-group-label">{t("chat.custom")}</div>
                 <div className="chat-model-custom">
                   <input
                     className="chat-model-custom-input"
@@ -1157,7 +1160,7 @@ function Chat({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleCustomModelSubmit();
                     }}
-                    placeholder="Type model name..."
+                    placeholder={t("chat.typeModelName")}
                   />
                 </div>
               </div>

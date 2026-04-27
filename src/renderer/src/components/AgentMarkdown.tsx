@@ -2,6 +2,7 @@ import { useState, useEffect, memo } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Copy } from "lucide-react";
+import { useI18n } from "./useI18n";
 
 // Lazy-load the heavy syntax highlighter — only imported when a code block renders
 let _highlighterMod: typeof import("react-syntax-highlighter") | null = null;
@@ -49,6 +50,7 @@ function CodeBlock({
   className?: string;
   children?: React.ReactNode;
 }): React.JSX.Element {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [highlighterReady, setHighlighterReady] = useState(
     () => _highlighterMod !== null && _oneDark !== null,
@@ -94,7 +96,7 @@ function CodeBlock({
           {isDiff ? "diff" : language || "code"}
         </span>
         <button className="chat-code-copy" onClick={handleCopy}>
-          {copied ? "Copied!" : <Copy size={13} />}
+          {copied ? t("common.copied") : <Copy size={13} />}
         </button>
       </div>
       {isDiff ? (

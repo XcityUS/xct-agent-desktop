@@ -1,4 +1,5 @@
 .DS_Store
+.idea/
 
 # Dependencies
 node_modules/
@@ -20,6 +21,9 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+
+# ESLint cache
+.eslintcache
 
 # Electron packaging artifacts
 release/

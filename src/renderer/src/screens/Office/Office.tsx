@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Refresh, ExternalLink, Settings } from "../../assets/icons";
+import { useI18n } from "../../components/useI18n";
 
 type OfficeState =
   | "checking"
@@ -17,6 +18,7 @@ interface SetupProgress {
 }
 
 function Office({ visible }: { visible?: boolean }): React.JSX.Element {
+  const { t } = useI18n();
   const [state, setState] = useState<OfficeState>("checking");
   const [running, setRunning] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -217,10 +219,10 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
   if (state === "checking") {
     return (
       <div className="settings-container">
-        <h1 className="settings-header">Office</h1>
+        <h1 className="settings-header">{t("office.title")}</h1>
         <div className="office-center">
           <div className="office-spinner" />
-          <p className="office-muted">Checking Claw3D status...</p>
+          <p className="office-muted">{t("office.checkingStatus")}</p>
         </div>
       </div>
     );
@@ -230,23 +232,20 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
   if (state === "not-installed" || state === "error") {
     return (
       <div className="settings-container">
-        <h1 className="settings-header">Office</h1>
+        <h1 className="settings-header">{t("office.title")}</h1>
         <div className="office-center">
           <div className="office-setup-card">
-            <h2 className="office-setup-title">Set Up Claw3D</h2>
+            <h2 className="office-setup-title">{t("office.setupTitle")}</h2>
             <p className="office-setup-desc">
-              Claw3D is a 3D visualization environment for your Hermes agents.
-              It lets you see your agents working in an interactive office
-              space.
+              {t("office.setupDesc1")}
             </p>
             <p className="office-setup-desc">
-              Click below to automatically download and set up Claw3D. This will
-              clone the repository and install all dependencies.
+              {t("office.setupDesc2")}
             </p>
             {error && <div className="office-error">{error}</div>}
             <div className="office-setup-actions">
               <button className="btn btn-primary" onClick={handleInstall}>
-                Install Claw3D
+                {t("office.installClaw3d")}
               </button>
               <button
                 className="btn btn-secondary"
@@ -256,8 +255,7 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
                   )
                 }
               >
-                <ExternalLink size={14} />
-                View on GitHub
+                <ExternalLink size={14} />{t("office.viewOnGithub")}
               </button>
             </div>
           </div>
@@ -270,9 +268,9 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
   if (state === "installing") {
     return (
       <div className="settings-container">
-        <h1 className="settings-header">Office</h1>
+        <h1 className="settings-header">{t("office.title")}</h1>
         <div className="office-installing">
-          <h2 className="office-install-title">Setting Up Claw3D</h2>
+          <h2 className="office-install-title">{t("office.installTitle")}</h2>
           <div className="install-progress-container">
             <div className="install-progress-bar">
               <div
@@ -289,7 +287,7 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
             <div className="install-step-detail">{progress.detail}</div>
           </div>
           <div className="install-log" ref={logRef}>
-            {progress.log || "Waiting to start..."}
+            {progress.log || t("office.waitingToStart")}
           </div>
         </div>
       </div>
@@ -301,12 +299,16 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
     <div className="office-ready">
       <div className="office-toolbar">
         <div className="office-toolbar-left">
-          <h1 className="office-toolbar-title">Office</h1>
+          <h1 className="office-toolbar-title">{t("office.title")}</h1>
           <span
             className={`office-status-dot ${running ? "running" : "stopped"}`}
           />
           <span className="office-status-label">
-            {starting ? "Starting..." : running ? "Running" : "Stopped"}
+            {starting
+              ? t("office.starting")
+              : running
+                ? t("gateway.running")
+                : t("gateway.stopped")}
           </span>
         </div>
         <div className="office-toolbar-right">
@@ -315,21 +317,25 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
             onClick={handleStartStop}
             disabled={starting || (portInUse && !running)}
           >
-            {starting ? "Starting..." : running ? "Stop" : "Start"}
+            {starting
+              ? t("office.starting")
+              : running
+                ? t("common.stop")
+                : t("common.start")}
           </button>
           {running && (
             <>
               <button
                 className="btn-ghost office-toolbar-btn"
                 onClick={refreshWebview}
-                title="Refresh"
+                title={t("common.refresh")}
               >
                 <Refresh size={16} />
               </button>
               <button
                 className="btn-ghost office-toolbar-btn"
                 onClick={() => window.hermesAPI.openExternal(claw3dUrl)}
-                title="Open in browser"
+                title={t("office.openInBrowser")}
               >
                 <ExternalLink size={16} />
               </button>
@@ -338,7 +344,7 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
           <button
             className="btn-ghost office-toolbar-btn"
             onClick={() => setShowSettings(!showSettings)}
-            title="Settings"
+            title={t("common.settings")}
           >
             <Settings size={16} />
           </button>
@@ -348,7 +354,7 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
       {showSettings && (
         <div className="office-settings-bar">
           <div className="office-setting">
-            <label className="office-setting-label">Port</label>
+            <label className="office-setting-label">{t("common.port")}</label>
             <input
               className="office-port-input"
               type="number"
@@ -363,7 +369,9 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
             />
           </div>
           <div className="office-setting">
-            <label className="office-setting-label">WebSocket URL</label>
+            <label className="office-setting-label">
+              {t("office.websocketUrl")}
+            </label>
             <input
               className="office-ws-input"
               type="text"
@@ -377,15 +385,14 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
             />
           </div>
           <button className="btn btn-secondary btn-sm" onClick={loadLogs}>
-            View Logs
+            {t("office.viewLogs")}
           </button>
         </div>
       )}
 
       {portInUse && !running && (
         <div className="office-warning-bar">
-          Port {port} is already in use. Change the port in settings or stop the
-          other process.
+          {t("office.portInUseWarning", { port })}
         </div>
       )}
 
@@ -394,13 +401,13 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
           <div className="office-error-text">{error}</div>
           <div className="office-error-actions">
             <button className="btn btn-secondary btn-sm" onClick={loadLogs}>
-              View Logs
+              {t("office.viewLogs")}
             </button>
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => setError("")}
             >
-              Dismiss
+              {t("office.close")}
             </button>
           </div>
         </div>
@@ -409,13 +416,13 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
       {showLogs && (
         <div className="office-logs-panel">
           <div className="office-logs-header">
-            <span>Process Logs</span>
+            <span>{t("office.processLogs")}</span>
             <button className="btn-ghost" onClick={() => setShowLogs(false)}>
-              Close
+              {t("common.close")}
             </button>
           </div>
           <div className="office-logs-content" ref={logRef}>
-            {logs || "No logs yet. Start the services to see output."}
+            {logs || t("office.noLogs")}
           </div>
         </div>
       )}
@@ -428,7 +435,7 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
                 {webviewError ? (
                   <div className="office-webview-error">
                     <p className="office-webview-error-title">
-                      Could not load Claw3D
+                      {t("office.cannotLoadClaw3d")}
                     </p>
                     <p className="office-muted">{webviewError}</p>
                     <div className="office-webview-error-actions">
@@ -436,13 +443,13 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
                         className="btn btn-primary btn-sm"
                         onClick={refreshWebview}
                       >
-                        Retry
+                        {t("common.retry")}
                       </button>
                       <button
                         className="btn btn-secondary btn-sm"
                         onClick={loadLogs}
                       >
-                        View Logs
+                        {t("office.viewLogs")}
                       </button>
                     </div>
                   </div>
@@ -451,8 +458,8 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
                     <div className="office-spinner" />
                     <p className="office-muted">
                       {starting
-                        ? "Starting Claw3D services..."
-                        : "Loading Claw3D..."}
+                        ? t("office.startingClaw3dService")
+                        : t("office.loadingClaw3d")}
                     </p>
                   </>
                 )}
@@ -468,8 +475,8 @@ function Office({ visible }: { visible?: boolean }): React.JSX.Element {
           <div className="office-center">
             <p className="office-muted">
               {portInUse && !running
-                ? `Port ${port} is in use. Change it in settings to start.`
-                : "Click Start to launch Claw3D"}
+                ? t("office.portInUse", { port })
+                : t("office.clickToStart")}
             </p>
           </div>
         ) : null}

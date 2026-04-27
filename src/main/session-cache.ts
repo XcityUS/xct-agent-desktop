@@ -3,6 +3,8 @@ import { join } from "path";
 import { HERMES_HOME } from "./installer";
 import { safeWriteFile } from "./utils";
 import Database from "better-sqlite3";
+import { t } from "../shared/i18n";
+import { getAppLocale } from "./locale";
 
 const CACHE_DIR = join(HERMES_HOME, "desktop");
 const CACHE_FILE = join(CACHE_DIR, "sessions.json");
@@ -24,7 +26,8 @@ interface CacheData {
 
 // Generate a short, readable title from the first user message (like ChatGPT/Claude)
 function generateTitle(message: string): string {
-  if (!message || !message.trim()) return "New conversation";
+  if (!message || !message.trim())
+    return t("sessions.newConversation", getAppLocale());
 
   // Clean up the message
   let text = message.trim();
@@ -36,7 +39,7 @@ function generateTitle(message: string): string {
   // Remove extra whitespace
   text = text.replace(/\s+/g, " ").trim();
 
-  if (!text) return "New conversation";
+  if (!text) return t("sessions.newConversation", getAppLocale());
 
   // If short enough, use as-is
   if (text.length <= 50) return text;
@@ -122,9 +125,11 @@ export function syncSessionCache(): CachedSession[] {
                ORDER BY timestamp, id LIMIT 1`,
             )
             .get(row.id) as { content: string } | undefined;
-          title = msg ? generateTitle(msg.content) : "New conversation";
+          title = msg
+            ? generateTitle(msg.content)
+            : t("sessions.newConversation", getAppLocale());
         } catch {
-          title = "New conversation";
+          title = t("sessions.newConversation", getAppLocale());
         }
       }
 

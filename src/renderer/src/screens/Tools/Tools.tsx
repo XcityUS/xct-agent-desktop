@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useI18n } from "../../components/useI18n";
 
 interface ToolsetInfo {
   key: string;
@@ -256,6 +257,7 @@ interface McpServer {
 }
 
 function Tools({ profile }: ToolsProps): React.JSX.Element {
+  const { t } = useI18n();
   const [toolsets, setToolsets] = useState<ToolsetInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [mcpServers, setMcpServers] = useState<McpServer[]>([]);
@@ -298,10 +300,8 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
   return (
     <div className="tools-container">
       <div className="tools-header">
-        <h2 className="tools-title">Tools</h2>
-        <p className="tools-subtitle">
-          Enable or disable toolsets available to the agent during conversations
-        </p>
+        <h2 className="tools-title">{t("tools.title")}</h2>
+        <p className="tools-subtitle">启用或禁用代理在对话期间可使用的工具集</p>
       </div>
 
       <div className="tools-grid">
@@ -334,11 +334,8 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
       {mcpServers.length > 0 && (
         <>
           <div className="tools-header" style={{ marginTop: 32 }}>
-            <h2 className="tools-title">MCP Servers</h2>
-            <p className="tools-subtitle">
-              Model Context Protocol servers configured in config.yaml. Manage
-              via <code>hermes mcp add/remove</code> in the terminal.
-            </p>
+            <h2 className="tools-title">{t("tools.mcpServers")}</h2>
+            <p className="tools-subtitle" dangerouslySetInnerHTML={{ __html: t("tools.mcpDescription") }} />
           </div>
           <div className="tools-grid">
             {mcpServers.map((s) => (
@@ -366,7 +363,7 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
                     className="tools-card-description"
                     style={{ fontSize: 10 }}
                   >
-                    {s.type === "http" ? "HTTP" : "stdio"}
+                    {s.type === "http" ? t("tools.http") : t("tools.stdio")}
                   </span>
                 </div>
                 <div className="tools-card-label">{s.name}</div>
@@ -374,7 +371,7 @@ function Tools({ profile }: ToolsProps): React.JSX.Element {
                   {s.detail}
                   {!s.enabled && (
                     <span style={{ color: "var(--error)", marginLeft: 6 }}>
-                      (disabled)
+                      ({t("tools.disabled")})
                     </span>
                   )}
                 </div>

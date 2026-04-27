@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { GATEWAY_SECTIONS, GATEWAY_PLATFORMS } from "../../constants";
+import { useI18n } from "../../components/useI18n";
 
 function Gateway({ profile }: { profile?: string }): React.JSX.Element {
+  const { t } = useI18n();
   const [gatewayRunning, setGatewayRunning] = useState(false);
   const [env, setEnv] = useState<Record<string, string>>({});
   const [platformEnabled, setPlatformEnabled] = useState<
@@ -94,42 +96,42 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
 
   return (
     <div className="settings-container">
-      <h1 className="settings-header">Gateway</h1>
+      <h1 className="settings-header">{t("gateway.title")}</h1>
 
       <div className="settings-section">
-        <div className="settings-section-title">Messaging Gateway</div>
+        <div className="settings-section-title">
+          {t("gateway.messagingGateway")}
+        </div>
         <div className="settings-field">
-          <label className="settings-field-label">Status</label>
+          <label className="settings-field-label">{t("gateway.status")}</label>
           <div className="settings-gateway-row">
             <span
               className={`settings-gateway-status ${gatewayRunning ? "running" : "stopped"}`}
             >
-              {gatewayRunning ? "Running" : "Stopped"}
+              {gatewayRunning ? t("gateway.running") : t("gateway.stopped")}
             </span>
             <button
               className="btn btn-secondary btn-sm"
               onClick={toggleGateway}
             >
-              {gatewayRunning ? "Stop" : "Start"}
+              {gatewayRunning ? t("common.stop") : t("common.start")}
             </button>
           </div>
-          <div className="settings-field-hint">
-            Connects Hermes to Telegram, Discord, Slack, and 13 other platforms
-          </div>
+          <div className="settings-field-hint">{t("gateway.gatewayHint")}</div>
         </div>
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-title">Platforms</div>
+        <div className="settings-section-title">{t("gateway.platforms")}</div>
         {GATEWAY_PLATFORMS.map((platform) => (
           <div key={platform.key} className="settings-platform-card">
             <div className="settings-platform-header">
               <div className="settings-platform-info">
                 <span className="settings-platform-label">
-                  {platform.label}
+                  {t(platform.label)}
                 </span>
                 <span className="settings-platform-desc">
-                  {platform.description}
+                  {t(platform.description)}
                 </span>
               </div>
               <label className="tools-toggle">
@@ -149,9 +151,9 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
                   return (
                     <div key={field.key} className="settings-field">
                       <label className="settings-field-label">
-                        {field.label}
+                        {t(field.label)}
                         {savedKey === field.key && (
-                          <span className="settings-saved">Saved</span>
+                          <span className="settings-saved">{t("common.saved")}</span>
                         )}
                       </label>
                       <div className="settings-input-row">
@@ -168,18 +170,18 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
                             handleChange(field.key, e.target.value)
                           }
                           onBlur={() => handleBlur(field.key)}
-                          placeholder={`Enter ${field.label.toLowerCase()}`}
+                          placeholder={t(field.label)}
                         />
                         {field.type === "password" && (
                           <button
                             className="btn-ghost settings-toggle-btn"
                             onClick={() => toggleVisibility(field.key)}
                           >
-                            {visibleKeys.has(field.key) ? "Hide" : "Show"}
+                            {visibleKeys.has(field.key) ? t("common.hide") : t("common.show")}
                           </button>
                         )}
                       </div>
-                      <div className="settings-field-hint">{field.hint}</div>
+                      <div className="settings-field-hint">{t(field.hint)}</div>
                     </div>
                   );
                 })}
@@ -191,13 +193,13 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
 
       {otherSections.map((section) => (
         <div key={section.title} className="settings-section">
-          <div className="settings-section-title">{section.title}</div>
+          <div className="settings-section-title">{t(section.title)}</div>
           {section.items.map((field) => (
             <div key={field.key} className="settings-field">
               <label className="settings-field-label">
-                {field.label}
+                {t(field.label)}
                 {savedKey === field.key && (
-                  <span className="settings-saved">Saved</span>
+                  <span className="settings-saved">{t("common.saved")}</span>
                 )}
               </label>
               <div className="settings-input-row">
@@ -211,18 +213,18 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
                   value={env[field.key] || ""}
                   onChange={(e) => handleChange(field.key, e.target.value)}
                   onBlur={() => handleBlur(field.key)}
-                  placeholder={`Enter ${field.label.toLowerCase()}`}
+                  placeholder={t(field.label)}
                 />
                 {field.type === "password" && (
                   <button
                     className="btn-ghost settings-toggle-btn"
                     onClick={() => toggleVisibility(field.key)}
                   >
-                    {visibleKeys.has(field.key) ? "Hide" : "Show"}
+                    {visibleKeys.has(field.key) ? t("common.hide") : t("common.show")}
                   </button>
                 )}
               </div>
-              <div className="settings-field-hint">{field.hint}</div>
+              <div className="settings-field-hint">{t(field.hint)}</div>
             </div>
           ))}
         </div>

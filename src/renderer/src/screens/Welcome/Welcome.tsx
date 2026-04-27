@@ -8,6 +8,7 @@ import {
   Spinner,
 } from "../../assets/icons";
 import { INSTALL_CMD } from "../../constants";
+import { useI18n } from "../../components/useI18n";
 
 interface WelcomeProps {
   error: string | null;
@@ -20,6 +21,7 @@ function Welcome({
   onStart,
   onRecheck,
 }: WelcomeProps): React.JSX.Element {
+  const { t } = useI18n();
   const [showRemote, setShowRemote] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState("");
   const [remoteApiKey, setRemoteApiKey] = useState("");
@@ -57,14 +59,16 @@ function Welcome({
       <div className="screen welcome-screen">
         <HermesLogo size={36} />
         <h1 className="welcome-title" style={{ fontSize: 22 }}>
-          Connect to Remote Hermes
+          {t("welcome.connectRemoteTitle")}
         </h1>
         <p className="welcome-subtitle" style={{ marginBottom: 24 }}>
-          Enter the URL of a running Hermes API server.
+          {t("welcome.connectRemoteSubtitle")}
         </p>
 
         <div className="welcome-remote-card">
-          <label className="welcome-remote-label">Server URL</label>
+          <label className="welcome-remote-label">
+            {t("welcome.remoteServerUrl")}
+          </label>
           <input
             type="url"
             className="welcome-remote-input"
@@ -81,12 +85,12 @@ function Welcome({
             className="welcome-remote-label"
             style={{ marginTop: 12 }}
           >
-            API Key (optional)
+            {t("welcome.remoteApiKey")}
           </label>
           <input
             type="password"
             className="welcome-remote-input"
-            placeholder="Bearer token (API_SERVER_KEY)"
+            placeholder={t("welcome.remoteApiKeyPlaceholder")}
             value={remoteApiKey}
             onChange={(e) => setRemoteApiKey(e.target.value)}
             onKeyDown={(e) => {
@@ -103,18 +107,17 @@ function Welcome({
             >
               {testing ? (
                 <>
-                  Testing...
+                  {t("welcome.testingConnection")}
                   <Spinner size={14} className="animate-spin" />
                 </>
               ) : (
-                "Connect"
+                t("welcome.connect")
               )}
             </button>
           </div>
           {remoteError && <p className="welcome-remote-error">{remoteError}</p>}
           <p className="welcome-remote-hint">
-            Leave the key empty if the server accepts unauthenticated
-            requests (e.g. via SSH tunnel to localhost).
+            {t("welcome.remoteHint")}
           </p>
         </div>
 
@@ -123,7 +126,7 @@ function Welcome({
           onClick={() => setShowRemote(false)}
           style={{ marginTop: 8, fontSize: 13, color: "var(--text-muted)" }}
         >
-          Back
+          {t("common.back")}
         </button>
       </div>
     );
@@ -135,7 +138,7 @@ function Welcome({
 
       {error ? (
         <>
-          <h1 className="welcome-title">Installation Issue</h1>
+          <h1 className="welcome-title">{t("welcome.installIssueTitle")}</h1>
           <p className="welcome-subtitle">{error}</p>
 
           <div className="welcome-actions">
@@ -143,24 +146,24 @@ function Welcome({
               className="btn btn-primary welcome-button"
               onClick={onStart}
             >
-              Retry Installation
+              {t("welcome.retryInstall")}
               <Refresh size={16} />
             </button>
 
             <div className="welcome-divider">
-              <span>or</span>
+              <span>{t("welcome.dividerOr")}</span>
             </div>
 
             <div className="welcome-terminal-option">
               <p className="welcome-terminal-label">
-                Install via terminal, then come back:
+                {t("welcome.terminalInstallHint")}
               </p>
               <div className="welcome-terminal-box">
                 <code>{INSTALL_CMD}</code>
                 <button
                   className="btn-ghost welcome-copy-btn"
                   onClick={() => navigator.clipboard.writeText(INSTALL_CMD)}
-                  title="Copy to clipboard"
+                  title={t("welcome.copyInstallCommand")}
                 >
                   <Copy size={14} />
                 </button>
@@ -171,7 +174,7 @@ function Welcome({
               className="btn btn-secondary welcome-recheck-btn"
               onClick={onRecheck}
             >
-              I&apos;ve installed it — check again
+              {t("welcome.recheck")}
             </button>
 
             <div className="welcome-divider">
@@ -189,21 +192,16 @@ function Welcome({
         </>
       ) : (
         <>
-          <h1 className="welcome-title">Welcome to Hermes</h1>
-          <p className="welcome-subtitle">
-            Your self-improving AI assistant that runs locally on your machine.
-            Private, powerful, and always learning.
-          </p>
+          <h1 className="welcome-title">{t("welcome.title")}</h1>
+          <p className="welcome-subtitle">{t("welcome.subtitle")}</p>
           <button className="btn btn-primary welcome-button" onClick={onStart}>
-            Get Started
+            {t("welcome.getStarted")}
             <ArrowRight size={16} />
           </button>
-          <p className="welcome-note">
-            This will install required components (~2 GB)
-          </p>
+          <p className="welcome-note">{t("welcome.installSizeHint")}</p>
 
           <div className="welcome-divider">
-            <span>or</span>
+            <span>{t("welcome.dividerOr")}</span>
           </div>
 
           <button
@@ -211,7 +209,7 @@ function Welcome({
             onClick={() => setShowRemote(true)}
           >
             <Globe size={16} />
-            Connect to Remote Hermes
+            {t("welcome.connectRemote")}
           </button>
         </>
       )}

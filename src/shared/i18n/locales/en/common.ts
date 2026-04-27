@@ -38,4 +38,11 @@ export default {
   noData: "No data yet",
   optional: "optional",
   devOnly: "Developer only",
+  updateAvailable: "Update v{{version}}",
+  downloading: "Downloading {{percent}}%",
+  restartToUpdate: "Restart to update",
+  errorTitle: "Something went wrong",
+  errorMessage: "An unexpected error occurred.",
+  tryAgain: "Try Again",
+  copied: "Copied!",
 } as const;

@@ -1,5 +1,6 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
+import i18n from "i18next";
 
 interface Props {
   children: ReactNode;
@@ -32,15 +33,15 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="error-boundary">
           <div className="error-boundary-card">
-            <h2 className="error-boundary-title">Something went wrong</h2>
+            <h2 className="error-boundary-title">{i18n.t("common.errorTitle")}</h2>
             <p className="error-boundary-message">
-              {this.state.error?.message || "An unexpected error occurred."}
+              {this.state.error?.message || i18n.t("common.errorMessage")}
             </p>
             <button
               className="btn btn-primary"
               onClick={() => this.setState({ hasError: false, error: null })}
             >
-              Try Again
+              {i18n.t("common.tryAgain")}
             </button>
           </div>
         </div>
