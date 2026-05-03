@@ -11,6 +11,8 @@ import Gateway from "../Gateway/Gateway";
 import Office from "../Office/Office";
 import Models from "../Models/Models";
 import Schedules from "../Schedules/Schedules";
+import RechargePage from "../Recharge/RechargePage";
+import OrderHistoryPage from "../Orders/OrderHistoryPage";
 import RemoteNotice from "../../components/RemoteNotice";
 import hermeslogo from "../../assets/xct-agent.png";
 import {
@@ -27,6 +29,8 @@ import {
   Layers,
   Timer,
   Download,
+  Wallet,
+  Receipt,
 } from "../../assets/icons";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
@@ -43,6 +47,8 @@ type View =
   | "tools"
   | "schedules"
   | "gateway"
+  | "recharge"
+  | "orders"
   | "settings";
 
 const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
@@ -57,6 +63,8 @@ const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
   { view: "tools", icon: Wrench, labelKey: "navigation.tools" },
   { view: "schedules", icon: Timer, labelKey: "navigation.schedules" },
   { view: "gateway", icon: Signal, labelKey: "navigation.gateway" },
+  { view: "recharge", icon: Wallet, labelKey: "navigation.recharge" },
+  { view: "orders", icon: Receipt, labelKey: "navigation.orders" },
   { view: "settings", icon: SettingsIcon, labelKey: "navigation.settings" },
 ];
 
@@ -289,6 +297,8 @@ function Layout(): React.JSX.Element {
           ) : (
             <Gateway profile={activeProfile} />
           ))}
+        {view === "recharge" && <RechargePage />}
+        {view === "orders" && <OrderHistoryPage />}
         <div
           style={{
             display: view === "settings" ? "flex" : "none",
