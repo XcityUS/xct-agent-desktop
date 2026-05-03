@@ -10,5 +10,7 @@ export default {
   tools: "工具",
   schedules: "计划任务",
   gateway: "网关",
+  recharge: "充值",
+  orders: "订单",
   settings: "设置",
 } as const;

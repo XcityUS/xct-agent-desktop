@@ -10,5 +10,7 @@ export default {
   tools: "Tools",
   schedules: "Schedules",
   gateway: "Gateway",
+  recharge: "Recharge",
+  orders: "Orders",
   settings: "Settings",
 } as const;

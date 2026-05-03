@@ -6,6 +6,7 @@ export {
   ChevronDown,
   Clock,
   Copy,
+  CreditCard,
   Download,
   ExternalLink,
   Layers,
@@ -13,6 +14,7 @@ export {
   Moon,
   Plus,
   Puzzle,
+  Receipt,
   Search,
   Send,
   Settings,
@@ -21,6 +23,7 @@ export {
   Sun,
   Timer,
   Users,
+  Wallet,
   Wrench,
   X,
 } from "lucide-react";
