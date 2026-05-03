@@ -19,6 +19,8 @@ export default {
   localName: "本地模型",
   localDesc: "LM Studio、Ollama 等",
   localTag: "无需 API Key",
+  customUrlName: "自定义 URL",
+  customUrlDesc: "任意 OpenAI 兼容 API",
   // Local presets
   lmstudio: "LM Studio",
   ollama: "Ollama",

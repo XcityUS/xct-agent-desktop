@@ -10,7 +10,14 @@ export default {
       desc: "LM Studio, Ollama, etc.",
       tag: "No API key needed",
     },
+    custom_url: {
+      name: "Custom URL",
+      desc: "Any OpenAI-compatible API",
+      tag: "",
+    },
   },
+  baseUrl: "Base URL",
+  customUrlHint: "OpenAI-compatible endpoint, e.g. https://api.example.com/v1",
   localPresets: {
     lmstudio: "LM Studio",
     ollama: "Ollama",

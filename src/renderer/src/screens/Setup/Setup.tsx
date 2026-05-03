@@ -15,17 +15,26 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
 
   const provider = PROVIDERS.setup.find((p) => p.id === selectedProvider)!;
   const isLocal = selectedProvider === "local";
+  const isCustomUrl = selectedProvider === "custom_url";
 
   function applyLocalPreset(port: string): void {
     setBaseUrl(`http://localhost:${port}/v1`);
   }
 
   async function handleContinue(): Promise<void> {
-    if (provider.needsKey && !apiKey.trim()) {
+    if (isCustomUrl) {
+      if (!baseUrl.trim()) {
+        setError(t("setup.missingServerUrl"));
+        return;
+      }
+      if (!apiKey.trim()) {
+        setError(t("setup.missingApiKey"));
+        return;
+      }
+    } else if (provider.needsKey && !apiKey.trim()) {
       setError(t("setup.missingApiKey"));
       return;
-    }
-    if (isLocal && !baseUrl.trim()) {
+    } else if (isLocal && !baseUrl.trim()) {
       setError(t("setup.missingServerUrl"));
       return;
     }
@@ -34,18 +43,27 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
     setError("");
 
     try {
-      if (provider.needsKey && provider.envKey) {
-        await window.hermesAPI.setEnv(provider.envKey, apiKey.trim());
+      if (isCustomUrl) {
+        // Custom URL: store apiKey + baseUrl + model via setModelConfig (no env var needed)
+        await window.hermesAPI.setModelConfig(
+          "custom",
+          modelName.trim(),
+          baseUrl.trim(),
+          apiKey.trim(),
+        );
+      } else {
+        if (provider.needsKey && provider.envKey) {
+          await window.hermesAPI.setEnv(provider.envKey, apiKey.trim());
+        }
+        const configProvider = isLocal ? "custom" : provider.configProvider;
+        const configBaseUrl = isLocal ? baseUrl.trim() : provider.baseUrl;
+        const configModel = modelName.trim() || "";
+        await window.hermesAPI.setModelConfig(
+          configProvider,
+          configModel,
+          configBaseUrl,
+        );
       }
-
-      const configProvider = isLocal ? "custom" : provider.configProvider;
-      const configBaseUrl = isLocal ? baseUrl.trim() : provider.baseUrl;
-      const configModel = modelName.trim() || "";
-      await window.hermesAPI.setModelConfig(
-        configProvider,
-        configModel,
-        configBaseUrl,
-      );
 
       onComplete();
     } catch {
@@ -85,7 +103,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
       </div>
 
       <div className="setup-form">
-        {isLocal ? (
+        {isLocal && (
           <>
             <label className="setup-label">{t("setup.serverPreset")}</label>
             <div className="setup-local-presets">
@@ -131,7 +149,70 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
               {t("setup.defaultModelHint")}
             </div>
           </>
-        ) : (
+        )}
+
+        {isCustomUrl && (
+          <>
+            <label className="setup-label">{t("setup.baseUrl")}</label>
+            <input
+              className="input"
+              type="text"
+              placeholder="https://api.example.com/v1"
+              value={baseUrl}
+              onChange={(e) => {
+                setBaseUrl(e.target.value);
+                setError("");
+              }}
+              autoFocus
+            />
+            <div className="setup-field-hint">{t("setup.customUrlHint")}</div>
+
+            <label className="setup-label" style={{ marginTop: 16 }}>
+              {t("setup.apiKeyLabel", {
+                provider: t("setup.providerCards.custom_url.name"),
+              })}
+            </label>
+            <div className="setup-input-group">
+              <input
+                className="input"
+                type={showKey ? "text" : "password"}
+                placeholder={provider.placeholder}
+                value={apiKey}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  setError("");
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleContinue()}
+              />
+              <button
+                className="setup-toggle-visibility"
+                onClick={() => setShowKey(!showKey)}
+                type="button"
+              >
+                {showKey ? t("common.hide") : t("common.show")}
+              </button>
+            </div>
+
+            <label className="setup-label" style={{ marginTop: 16 }}>
+              {t("setup.modelName")}{" "}
+              <span className="setup-label-optional">
+                {t("common.optional")}
+              </span>
+            </label>
+            <input
+              className="input"
+              type="text"
+              placeholder={t("setup.modelNamePlaceholder")}
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+            />
+            <div className="setup-field-hint">
+              {t("setup.defaultModelHint")}
+            </div>
+          </>
+        )}
+
+        {!isLocal && !isCustomUrl && (
           <>
             <label className="setup-label">
               {t("setup.apiKeyLabel", {
@@ -177,10 +258,11 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
           onClick={handleContinue}
           disabled={
             saving ||
-            (provider.needsKey && !apiKey.trim()) ||
+            (provider.needsKey && !apiKey.trim() && !isCustomUrl) ||
+            (isCustomUrl && (!baseUrl.trim() || !apiKey.trim())) ||
             (isLocal && !baseUrl.trim())
           }
-          style={{ marginTop: isLocal ? 20 : 0 }}
+          style={{ marginTop: isLocal || isCustomUrl ? 20 : 0 }}
         >
           {saving ? t("setup.saving") : t("setup.continue")}
           {!saving && <ArrowRight size={16} />}

@@ -72,6 +72,7 @@ function Settings({
   const [modelProvider, setModelProvider] = useState("auto");
   const [modelName, setModelName] = useState("");
   const [modelBaseUrl, setModelBaseUrl] = useState("");
+  const [modelApiKey, setModelApiKey] = useState("");
   const [modelSaved, setModelSaved] = useState(false);
   const modelLoaded = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -187,6 +188,7 @@ function Settings({
       setModelProvider(mc.provider);
       setModelName(mc.model);
       setModelBaseUrl(mc.baseUrl);
+      setModelApiKey(mc.apiKey || "");
       requestAnimationFrame(() => {
         modelLoaded.current = true;
       });
@@ -200,6 +202,7 @@ function Settings({
       modelProvider,
       modelName,
       modelBaseUrl,
+      modelApiKey,
       profile,
     );
     // Auto-save to models library (dedup handled by backend)
@@ -214,7 +217,7 @@ function Settings({
     }
     setModelSaved(true);
     setTimeout(() => setModelSaved(false), 2000);
-  }, [modelProvider, modelName, modelBaseUrl, profile]);
+  }, [modelProvider, modelName, modelBaseUrl, modelApiKey, profile]);
 
   useEffect(() => {
     if (!modelLoaded.current) return;
@@ -225,7 +228,7 @@ function Settings({
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [modelProvider, modelName, modelBaseUrl, saveModelConfig]);
+  }, [modelProvider, modelName, modelBaseUrl, modelApiKey, saveModelConfig]);
 
   async function handleBlur(key: string): Promise<void> {
     const value = env[key] || "";
@@ -795,7 +798,6 @@ function Settings({
         </div>
       )}
 
-      {connMode === "local" && (
       <div className="settings-section">
         <div className="settings-section-title">
           {t("common.model")}
@@ -847,6 +849,7 @@ function Settings({
         </div>
 
         {isCustomProvider && (
+          <>
           <div className="settings-field">
             <label className="settings-field-label">
               {t("common.baseUrl")}
@@ -860,9 +863,22 @@ function Settings({
             />
             <div className="settings-field-hint">{t("settings.customBaseUrlHint")}</div>
           </div>
+          <div className="settings-field">
+            <label className="settings-field-label">
+              {t("settings.apiKeyLabel", { provider: "" })}
+            </label>
+            <input
+              className="input"
+              type="password"
+              value={modelApiKey}
+              onChange={(e) => setModelApiKey(e.target.value)}
+              placeholder={t("settings.apiKeyPlaceholder")}
+            />
+            <div className="settings-field-hint">{t("settings.customApiKeyHint")}</div>
+          </div>
+          </>
         )}
       </div>
-      )}
 
       {connMode === "local" && (
       <div className="settings-section">

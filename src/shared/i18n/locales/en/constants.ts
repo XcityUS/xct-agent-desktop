@@ -19,6 +19,8 @@ export default {
   localName: "Local LLM",
   localDesc: "LM Studio, Ollama, etc.",
   localTag: "No API key needed",
+  customUrlName: "Custom URL",
+  customUrlDesc: "Any OpenAI-compatible API",
   // Local presets
   lmstudio: "LM Studio",
   ollama: "Ollama",

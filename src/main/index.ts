@@ -277,17 +277,19 @@ function setupIPC(): void {
       provider: string,
       model: string,
       baseUrl: string,
+      apiKey: string,
       profile?: string,
     ) => {
       const prev = getModelConfig(profile);
-      setModelConfig(provider, model, baseUrl, profile);
+      setModelConfig(provider, model, baseUrl, apiKey, profile);
 
-      // Restart gateway when provider, model, or endpoint changes so it picks up new config
+      // Restart gateway when provider, model, endpoint, or apiKey changes so it picks up new config
       if (
         isGatewayRunning() &&
         (prev.provider !== provider ||
           prev.model !== model ||
-          prev.baseUrl !== baseUrl)
+          prev.baseUrl !== baseUrl ||
+          prev.apiKey !== apiKey)
       ) {
         restartGateway(profile);
       }

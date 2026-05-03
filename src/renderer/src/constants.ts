@@ -125,6 +125,18 @@ export const PROVIDERS = {
       baseUrl: "http://localhost:1234/v1",
       needsKey: false,
     },
+    {
+      id: "custom_url",
+      name: "constants.customUrlName",
+      desc: "constants.customUrlDesc",
+      tag: "",
+      envKey: "OPENAI_API_KEY",
+      url: "",
+      placeholder: "sk-...",
+      configProvider: "custom",
+      baseUrl: "",
+      needsKey: false,
+    },
   ],
 };
 
