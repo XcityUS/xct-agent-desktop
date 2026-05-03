@@ -17,7 +17,19 @@ import { chatCompletion, configureCloudApi, healthCheck as cloudHealthCheck } fr
 
 const LOCAL_API_URL = "http://127.0.0.1:8642";
 
-function getApiUrl(): string {
+/**
+ * Returns the effective base URL for API requests.
+ * Priority:
+ *   1. mc.baseUrl  — when provider is "custom" (user-configured endpoint)
+ *   2. conn.remoteUrl — when in remote mode (remote Hermes server)
+ *   3. LOCAL_API_URL — default local server
+ */
+function getApiUrl(profile?: string): string {
+  const mc = getModelConfig(profile);
+  // Custom provider: always use mc.baseUrl (supports any OpenAI-compatible endpoint)
+  if (mc.provider === "custom" && mc.baseUrl) {
+    return mc.baseUrl.replace(/\/+$/, "");
+  }
   const conn = getConnectionConfig();
   if (conn.mode === "remote" && conn.remoteUrl) {
     return conn.remoteUrl.replace(/\/+$/, "");
@@ -25,16 +37,52 @@ function getApiUrl(): string {
   return LOCAL_API_URL;
 }
 
-export function isRemoteMode(): boolean {
-  return getConnectionConfig().mode === "remote";
-}
-
-function getRemoteAuthHeader(): Record<string, string> {
+/**
+ * Returns the effective API key for the current endpoint.
+ * For "custom" provider, resolves the key from profile env vars by matching
+ * the base URL pattern. Falls back to OPENAI_API_KEY.
+ * For remote mode, uses conn.apiKey.
+ * For local mode (no auth), returns empty object.
+ */
+function getApiAuthHeader(profile?: string): Record<string, string> {
+  const mc = getModelConfig(profile);
+  // Custom provider: use the key stored in config.yaml directly
+  if (mc.provider === "custom" && mc.baseUrl) {
+    // If user supplied an API key in Settings, use it directly
+    if (mc.apiKey) {
+      return { Authorization: `Bearer ${mc.apiKey}` };
+    }
+    // Fallback: look up by URL pattern for env-based keys
+    let resolvedKey = "";
+    for (const { pattern, envKey } of URL_KEY_MAP) {
+      if (pattern.test(mc.baseUrl)) {
+        const profileEnv = readEnv(profile);
+        resolvedKey = profileEnv[envKey] || "";
+        break;
+      }
+    }
+    if (!resolvedKey) {
+      const profileEnv = readEnv(profile);
+      resolvedKey = profileEnv.OPENAI_API_KEY || "";
+    }
+    // Local servers (localhost/127.0.0.1) don't require a real key
+    if (!resolvedKey && /localhost|127\.0\.0\.1/i.test(mc.baseUrl)) {
+      resolvedKey = "no-key-required";
+    }
+    if (resolvedKey) {
+      return { Authorization: `Bearer ${resolvedKey}` };
+    }
+    return {};
+  }
   const conn = getConnectionConfig();
   if (conn.mode === "remote" && conn.apiKey) {
     return { Authorization: `Bearer ${conn.apiKey}` };
   }
   return {};
+}
+
+export function isRemoteMode(): boolean {
+  return getConnectionConfig().mode === "remote";
 }
 
 const LOCAL_PROVIDERS = new Set([
@@ -51,6 +99,7 @@ const URL_KEY_MAP: Array<{ pattern: RegExp; envKey: string }> = [
   { pattern: /anthropic\.com/i, envKey: "ANTHROPIC_API_KEY" },
   { pattern: /openai\.com/i, envKey: "OPENAI_API_KEY" },
   { pattern: /huggingface\.co/i, envKey: "HF_TOKEN" },
+  { pattern: /xcity\.one/i, envKey: "OPENROUTER_API_KEY" },
 ];
 
 interface ChatHandle {
@@ -61,13 +110,13 @@ interface ChatHandle {
 //  API Server health check
 // ────────────────────────────────────────────────────
 
-function isApiServerReady(): Promise<boolean> {
+function isApiServerReady(profile?: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const url = `${getApiUrl()}/health`;
+    const url = `${getApiUrl(profile)}/health`;
     const mod = url.startsWith("https") ? https : http;
     const req = mod.request(
       url,
-      { method: "GET", timeout: 1500, headers: getRemoteAuthHeader() },
+      { method: "GET", timeout: 1500, headers: getApiAuthHeader(profile) },
       (res) => {
         resolve(res.statusCode === 200);
         res.resume();
@@ -157,7 +206,7 @@ function sendMessageViaApi(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...getRemoteAuthHeader(),
+    ...getApiAuthHeader(profile),
   };
 
   let sessionId = _resumeSessionId || "";
@@ -184,7 +233,7 @@ function sendMessageViaApi(
       messages: [{ role: "user", content: message }],
       stream: false,
     });
-    const probeUrl = `${getApiUrl()}/v1/chat/completions`;
+    const probeUrl = `${getApiUrl(profile)}/v1/chat/completions`;
     const probeMod = probeUrl.startsWith("https") ? https : http;
     const probeReq = probeMod.request(
       probeUrl,
@@ -192,7 +241,7 @@ function sendMessageViaApi(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getRemoteAuthHeader(),
+          ...getApiAuthHeader(profile),
         },
       },
       (res) => {
@@ -294,7 +343,7 @@ function sendMessageViaApi(
     return false;
   }
 
-  const chatUrl = `${getApiUrl()}/v1/chat/completions`;
+  const chatUrl = `${getApiUrl(profile)}/v1/chat/completions`;
   const requester = chatUrl.startsWith("https") ? https.request : http.request;
   const req = requester(
     chatUrl,
@@ -592,7 +641,7 @@ export async function sendMessage(
 
   // Check API server availability (cache the result, re-check periodically)
   if (apiServerAvailable === null || apiServerAvailable === false) {
-    apiServerAvailable = await isApiServerReady();
+    apiServerAvailable = await isApiServerReady(profile);
   }
 
   if (apiServerAvailable) {

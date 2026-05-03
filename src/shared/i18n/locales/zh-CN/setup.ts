@@ -10,7 +10,14 @@ export default {
       desc: "LM Studio、Ollama 等",
       tag: "无需 API Key",
     },
+    custom_url: {
+      name: "自定义 URL",
+      desc: "任意 OpenAI 兼容 API",
+      tag: "",
+    },
   },
+  baseUrl: "Base URL",
+  customUrlHint: "OpenAI 兼容端点，例如 https://api.example.com/v1",
   localPresets: {
     lmstudio: "LM Studio",
     ollama: "Ollama",

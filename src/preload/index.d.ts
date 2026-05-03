@@ -44,11 +44,12 @@ interface HermesAPI {
   getHermesHome: (profile?: string) => Promise<string>;
   getModelConfig: (
     profile?: string,
-  ) => Promise<{ provider: string; model: string; baseUrl: string }>;
+  ) => Promise<{ provider: string; model: string; baseUrl: string; apiKey: string }>;
   setModelConfig: (
     provider: string,
     model: string,
     baseUrl: string,
+    apiKey?: string,
     profile?: string,
   ) => Promise<boolean>;
 

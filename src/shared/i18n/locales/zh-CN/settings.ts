@@ -28,6 +28,7 @@ export default {
   customProviderHint: "使用任何兼容 OpenAI 的接口(LM Studio、Ollama、vLLM 等)",
   modelHint: "默认模型名(留空则使用提供商默认值)",
   customBaseUrlHint: "兼容 OpenAI 的 API 地址",
+  customApiKeyHint: "自定义端点的 Bearer token（无需鉴权的本地服务可留空）",
   poolHint: "为同一提供商添加多个 API Key,以便自动轮换和负载均衡。Hermes 会在它们之间轮流使用。",
   add: "添加",
   remove: "移除",

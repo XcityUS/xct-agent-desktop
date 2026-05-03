@@ -28,6 +28,7 @@ export default {
   customProviderHint: "Use any OpenAI-compatible API (LM Studio, Ollama, vLLM, etc.)",
   modelHint: "Default model name (leave blank to use provider default)",
   customBaseUrlHint: "OpenAI-compatible API endpoint",
+  customApiKeyHint: "Bearer token for the custom endpoint (leave blank for local servers that don't require auth)",
   poolHint: "Add multiple API Keys for the same provider for automatic rotation and load balancing. Hermes will cycle through them.",
   add: "Add",
   remove: "Remove",

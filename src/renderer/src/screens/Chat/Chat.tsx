@@ -370,7 +370,7 @@ function Chat({
     model: string,
     baseUrl: string,
   ): Promise<void> {
-    await window.hermesAPI.setModelConfig(provider, model, baseUrl, profile);
+    await window.hermesAPI.setModelConfig(provider, model, baseUrl, "", profile);
     setCurrentModel(model);
     setCurrentProvider(provider);
     setCurrentBaseUrl(baseUrl);
