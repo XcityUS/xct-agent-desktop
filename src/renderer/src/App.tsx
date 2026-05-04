@@ -10,66 +10,84 @@ import { useI18n } from "./components/useI18n";
 
 type Screen = "splash" | "welcome" | "installing" | "setup" | "main";
 
+// Minimum time the splash stays visible so the brand animation plays
+// through. Tracks the splash logo fade-in duration in main.css.
+const SPLASH_MIN_MS = 1300;
+
 function App(): React.JSX.Element {
   const { t } = useI18n();
   const [screen, setScreen] = useState<Screen>("splash");
   const [installError, setInstallError] = useState<string | null>(null);
-  const [nextScreen, setNextScreen] = useState<Screen | null>(null);
-  const [splashDone, setSplashDone] = useState(false);
   const isMac = window.electron?.process?.platform === "darwin";
 
   const runInstallCheck = useCallback(async () => {
+    const startedAt = Date.now();
+    let next: Screen = "welcome";
+    let error: string | null = null;
+    let isRemote = false;
+
     try {
       const conn = await window.hermesAPI.getConnectionConfig();
+      isRemote = conn.mode === "remote";
 
-      // Remote mode: verify the remote server is reachable
-      if (conn.mode === "remote" && conn.remoteUrl) {
+      if (isRemote && conn.remoteUrl) {
         const ok = await window.hermesAPI.testRemoteConnection(
           conn.remoteUrl,
           conn.apiKey,
         );
         if (ok) {
-          setNextScreen("main");
+          next = "main";
         } else {
-          setInstallError(
-            `Cannot reach remote Hermes at ${conn.remoteUrl}. Check the URL or switch to local mode.`,
-          );
-          setNextScreen("welcome");
+          error = `Cannot reach remote Hermes at ${conn.remoteUrl}. Check the URL or switch to local mode.`;
+          next = "welcome";
         }
-        return;
-      }
-
-      // Local mode: normal install check
-      const status = await window.hermesAPI.checkInstall();
-      if (!status.installed) {
-        setNextScreen("welcome");
-      } else if (!status.verified) {
-        setInstallError(t("errors.installBroken"));
-        setNextScreen("welcome");
-      } else if (!status.hasApiKey) {
-        setNextScreen("setup");
       } else {
-        setNextScreen("main");
+        const status = await window.hermesAPI.checkInstall();
+        if (!status.installed) {
+          next = "welcome";
+        } else if (!status.hasApiKey) {
+          next = "setup";
+        } else {
+          next = "main";
+        }
       }
     } catch {
-      setNextScreen("welcome");
+      next = "welcome";
+    }
+
+    if (error) setInstallError(error);
+
+    const elapsed = Date.now() - startedAt;
+    const wait = Math.max(0, SPLASH_MIN_MS - elapsed);
+    if (wait > 0) {
+      await new Promise((r) => setTimeout(r, wait));
+    }
+    setScreen(next);
+
+    // Lazy deep-verify in the background after the UI is up. If the
+    // install is broken, surface the warning then — don't block startup.
+    //
+    // Skip for remote-mode connections: verifyInstall() probes the LOCAL
+    // Python + script paths (HERMES_PYTHON / HERMES_SCRIPT in installer.ts),
+    // which don't exist on machines that only use a remote backend. Without
+    // this guard the user is bounced back to Welcome with an "installBroken"
+    // error immediately after a successful remote connect. (#47, #41, #30)
+    if ((next === "main" || next === "setup") && !isRemote) {
+      window.hermesAPI.verifyInstall().then((ok) => {
+        if (!ok) {
+          setInstallError(t("errors.installBroken"));
+          setScreen("welcome");
+        }
+      });
     }
   }, [t]);
 
-  // Run install check during splash
   useEffect(() => {
     runInstallCheck();
   }, [runInstallCheck]);
 
-  // Transition away from splash when both animation and install check are done
-  useEffect(() => {
-    if (splashDone && nextScreen) {
-      setScreen(nextScreen);
-    }
-  }, [splashDone, nextScreen]);
-
   const handleSplashFinished = useCallback(() => {
-    setSplashDone(true);
+    /* splash transition is driven by the install check, not a timer */
   }, []);
 
   function handleInstallComplete(): void {
@@ -90,8 +108,6 @@ function App(): React.JSX.Element {
   function handleRecheck(): void {
     setInstallError(null);
     setScreen("splash");
-    setSplashDone(false);
-    setNextScreen(null);
     runInstallCheck();
   }
 

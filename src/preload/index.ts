@@ -9,6 +9,8 @@ const hermesAPI = {
     hasApiKey: boolean;
   }> => ipcRenderer.invoke("check-install"),
 
+  verifyInstall: (): Promise<boolean> => ipcRenderer.invoke("verify-install"),
+
   startInstall: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("start-install"),
 
@@ -54,8 +56,8 @@ const hermesAPI = {
   runClawMigrate: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("run-claw-migrate"),
 
-  getLocale: (): Promise<"en" | "zh-CN"> => ipcRenderer.invoke("get-locale"),
-  setLocale: (locale: "en" | "zh-CN"): Promise<"en" | "zh-CN"> =>
+  getLocale: (): Promise<"en" | "es" | "zh-CN"> => ipcRenderer.invoke("get-locale"),
+  setLocale: (locale: "en" | "es" | "zh-CN"): Promise<"en" | "es" | "zh-CN"> =>
     ipcRenderer.invoke("set-locale", locale),
 
   // Configuration (profile-aware)

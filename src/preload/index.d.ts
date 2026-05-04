@@ -18,6 +18,7 @@ interface InstallProgress {
 interface HermesAPI {
   // Installation
   checkInstall: () => Promise<InstallStatus>;
+  verifyInstall: () => Promise<boolean>;
   startInstall: () => Promise<{ success: boolean; error?: string }>;
   onInstallProgress: (
     callback: (progress: InstallProgress) => void,
@@ -30,11 +31,11 @@ interface HermesAPI {
   runHermesUpdate: () => Promise<{ success: boolean; error?: string }>;
 
   // OpenClaw migration
-  checkOpenClaw: () => Promise<{ found: boolean; path: string | null }>; 
+  checkOpenClaw: () => Promise<{ found: boolean; path: string | null }>;
   runClawMigrate: () => Promise<{ success: boolean; error?: string }>;
 
-  getLocale: () => Promise<"en" | "zh-CN">;
-  setLocale: (locale: "en" | "zh-CN") => Promise<"en" | "zh-CN">;
+  getLocale: () => Promise<"en" | "es" | "zh-CN">;
+  setLocale: (locale: "en" | "es" | "zh-CN") => Promise<"en" | "es" | "zh-CN">;
 
   // Configuration (profile-aware)
   getEnv: (profile?: string) => Promise<Record<string, string>>;

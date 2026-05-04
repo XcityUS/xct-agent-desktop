@@ -10,6 +10,7 @@ import Tools from "../Tools/Tools";
 import Gateway from "../Gateway/Gateway";
 import Office from "../Office/Office";
 import Models from "../Models/Models";
+import Providers from "../Providers/Providers";
 import Schedules from "../Schedules/Schedules";
 import RechargePage from "../Recharge/RechargePage";
 import OrderHistoryPage from "../Orders/OrderHistoryPage";
@@ -27,6 +28,7 @@ import {
   Signal,
   Building,
   Layers,
+  KeyRound,
   Timer,
   Download,
   Wallet,
@@ -41,6 +43,7 @@ type View =
   | "agents"
   | "office"
   | "models"
+  | "providers"
   | "skills"
   | "soul"
   | "memory"
@@ -57,6 +60,7 @@ const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
   { view: "agents", icon: Users, labelKey: "navigation.agents" },
   { view: "office", icon: Building, labelKey: "navigation.office" },
   { view: "models", icon: Layers, labelKey: "navigation.models" },
+  { view: "providers", icon: KeyRound, labelKey: "navigation.providers" },
   { view: "skills", icon: Puzzle, labelKey: "navigation.skills" },
   { view: "soul", icon: Sparkles, labelKey: "navigation.soul" },
   { view: "memory", icon: Brain, labelKey: "navigation.memory" },
@@ -261,6 +265,20 @@ function Layout(): React.JSX.Element {
           </div>
         )}
         {view === "models" && <Models />}
+        <div
+          style={{
+            display: view === "providers" ? "flex" : "none",
+            flex: 1,
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          {remoteMode ? (
+            view === "providers" && <RemoteNotice feature="Providers" />
+          ) : (
+            <Providers profile={activeProfile} visible={view === "providers"} />
+          )}
+        </div>
         {view === "skills" &&
           (remoteMode ? (
             <RemoteNotice feature="Skills" />
@@ -285,12 +303,7 @@ function Layout(): React.JSX.Element {
           ) : (
             <Tools profile={activeProfile} />
           ))}
-        {view === "schedules" &&
-          (remoteMode ? (
-            <RemoteNotice feature="Schedules" />
-          ) : (
-            <Schedules profile={activeProfile} />
-          ))}
+        {view === "schedules" && <Schedules profile={activeProfile} />}
         {view === "gateway" &&
           (remoteMode ? (
             <RemoteNotice feature="Gateway" />
@@ -307,7 +320,7 @@ function Layout(): React.JSX.Element {
             overflow: "hidden",
           }}
         >
-          <Settings profile={activeProfile} visible={view === "settings"} />
+          <Settings profile={activeProfile} />
         </div>
       </main>
     </div>

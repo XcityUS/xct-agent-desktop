@@ -9,6 +9,7 @@ export {
   CreditCard,
   Download,
   ExternalLink,
+  KeyRound,
   Layers,
   Monitor,
   Moon,

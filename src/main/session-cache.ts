@@ -101,16 +101,19 @@ export function syncSessionCache(): CachedSession[] {
       title: string | null;
     }>;
 
-    const existingIds = new Set(cache.sessions.map((s) => s.id));
-    let newSessions: CachedSession[] = [];
+    // Index existing sessions by id once so the per-row update below is
+    // O(1) instead of O(N). Without this, syncing N existing sessions
+    // against N new rows is O(N²) and visibly slows app startup once a
+    // user has accumulated thousands of sessions (issue #16).
+    const existingById = new Map<string, CachedSession>();
+    for (const s of cache.sessions) existingById.set(s.id, s);
+    const newSessions: CachedSession[] = [];
 
     for (const row of rows) {
-      if (existingIds.has(row.id)) {
+      const existing = existingById.get(row.id);
+      if (existing) {
         // Update existing entry (message count may have changed)
-        const idx = cache.sessions.findIndex((s) => s.id === row.id);
-        if (idx >= 0) {
-          cache.sessions[idx].messageCount = row.message_count;
-        }
+        existing.messageCount = row.message_count;
         continue;
       }
 
