@@ -11,6 +11,13 @@ export default {
     light: "Light",
     dark: "Dark",
   },
+  language: {
+    label: "Language",
+    english: "English",
+    spanish: "Español",
+    chinese: "中文",
+    hint: "Choose the interface language",
+  },
   notDetected: "Not detected",
   updatedSuccessfully: "Updated successfully!",
   updateFailed: "Update failed.",

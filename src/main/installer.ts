@@ -2,10 +2,13 @@ import { spawn, execSync, execFile } from "child_process";
 import { existsSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import type { BrowserWindow } from "electron";
 import { getModelConfig, getConnectionConfig } from "./config";
 import { stripAnsi } from "./utils";
+import { setupAskpass, AskpassHandle } from "./askpass";
 
-export const HERMES_HOME = join(homedir(), ".hermes");
+export const HERMES_HOME =
+  process.env.HERMES_HOME?.trim() || join(homedir(), ".hermes");
 export const HERMES_REPO = join(HERMES_HOME, "hermes-agent");
 export const HERMES_VENV = join(HERMES_REPO, "venv");
 export const HERMES_PYTHON = join(HERMES_VENV, "bin", "python");
@@ -81,32 +84,22 @@ export function checkInstallStatus(): InstallStatus {
   // Remote mode: skip local checks entirely
   const conn = getConnectionConfig();
   if (conn.mode === "remote" && conn.remoteUrl) {
-    return { installed: true, configured: true, hasApiKey: true, verified: true };
+    return {
+      installed: true,
+      configured: true,
+      hasApiKey: true,
+      verified: true,
+    };
   }
 
+  // Fast path: file existence is enough to gate the UI. The deep
+  // `python --version` check used to run here adds 1–10s of cold-start
+  // latency, so it now lives in `verifyInstall()` and is invoked lazily
+  // by the renderer after the main UI is mounted.
   const installed = existsSync(HERMES_PYTHON) && existsSync(HERMES_SCRIPT);
   const configured = existsSync(HERMES_ENV_FILE);
   let hasApiKey = false;
-  let verified = false;
-
-  if (installed) {
-    try {
-      execSync(`"${HERMES_PYTHON}" "${HERMES_SCRIPT}" --version`, {
-        cwd: HERMES_REPO,
-        env: {
-          ...process.env,
-          PATH: getEnhancedPath(),
-          HOME: homedir(),
-          HERMES_HOME,
-        },
-        stdio: "ignore",
-        timeout: 15000,
-      });
-      verified = true;
-    } catch {
-      verified = false;
-    }
-  }
+  const verified = installed;
 
   // Local/custom providers don't need an API key
   try {
@@ -143,6 +136,39 @@ export function checkInstallStatus(): InstallStatus {
   }
 
   return { installed, configured, hasApiKey, verified };
+}
+
+// Lazy background verification: actually invoke Python to confirm the
+// install runs. Called from the renderer after the UI is already up.
+let _verifyCache: { ok: boolean; ts: number } | null = null;
+const VERIFY_TTL_MS = 5 * 60 * 1000;
+
+export async function verifyInstall(): Promise<boolean> {
+  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) return false;
+  if (_verifyCache && Date.now() - _verifyCache.ts < VERIFY_TTL_MS) {
+    return _verifyCache.ok;
+  }
+  return new Promise((resolve) => {
+    execFile(
+      HERMES_PYTHON,
+      [HERMES_SCRIPT, "--version"],
+      {
+        cwd: HERMES_REPO,
+        env: {
+          ...process.env,
+          PATH: getEnhancedPath(),
+          HOME: homedir(),
+          HERMES_HOME,
+        },
+        timeout: 15000,
+      },
+      (error) => {
+        const ok = !error;
+        _verifyCache = { ok, ts: Date.now() };
+        resolve(ok);
+      },
+    );
+  });
 }
 
 // Cached version to avoid re-running the Python process
@@ -406,6 +432,7 @@ const STAGE_MARKERS: { pattern: RegExp; step: number; title: string }[] = [
 
 export async function runInstall(
   onProgress: (progress: InstallProgress) => void,
+  parentWindow?: BrowserWindow | null,
 ): Promise<void> {
   const totalSteps = 7;
   let log = "";
@@ -435,64 +462,83 @@ export async function runInstall(
 
   emit("Running official Hermes install script...\n");
 
-  return new Promise((resolve, reject) => {
-    const home = homedir();
+  // Bridge any sudo prompts from install.sh to a GUI password dialog.
+  // Windows has no sudo, so skip the bridge there.
+  let askpass: AskpassHandle | null = null;
+  if (process.platform !== "win32") {
+    try {
+      askpass = await setupAskpass(parentWindow ?? null);
+    } catch (err) {
+      emit(
+        `\n[askpass] Could not set up GUI password bridge: ${(err as Error).message}\n`,
+      );
+    }
+  }
 
-    // Source the user's shell profile to get the same PATH as their terminal,
-    // then run the official install script. Electron apps launched from Finder
-    // don't inherit the terminal environment.
-    const shellProfile = getShellProfile(home);
-    const installCmd = [
-      shellProfile ? `source "${shellProfile}" 2>/dev/null;` : "",
-      "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup",
-    ].join(" ");
+  try {
+    return await new Promise<void>((resolve, reject) => {
+      const home = homedir();
 
-    const proc = spawn("bash", ["-c", installCmd], {
-      cwd: home,
-      env: {
-        ...process.env,
-        PATH: getEnhancedPath(),
-        HOME: home,
-        TERM: "dumb",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+      // Source the user's shell profile to get the same PATH as their terminal,
+      // then run the official install script. Electron apps launched from Finder
+      // don't inherit the terminal environment.
+      const shellProfile = getShellProfile(home);
+      const installCmd = [
+        shellProfile ? `source "${shellProfile}" 2>/dev/null;` : "",
+        "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup",
+      ].join(" ");
 
-    proc.stdout?.on("data", (data: Buffer) => {
-      emit(stripAnsi(data.toString()));
-    });
+      const basePath = getEnhancedPath();
+      const proc = spawn("bash", ["-c", installCmd], {
+        cwd: home,
+        env: {
+          ...process.env,
+          PATH: askpass ? `${askpass.pathPrepend}:${basePath}` : basePath,
+          HOME: home,
+          TERM: "dumb",
+          ...(askpass?.env ?? {}),
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
 
-    proc.stderr?.on("data", (data: Buffer) => {
-      emit(stripAnsi(data.toString()));
-    });
+      proc.stdout?.on("data", (data: Buffer) => {
+        emit(stripAnsi(data.toString()));
+      });
 
-    proc.on("close", (code) => {
-      if (code === 0) {
-        emit("\nInstallation complete!\n");
-        resolve();
-      } else {
-        // The install script can exit non-zero due to benign issues
-        // (e.g. git stash pop failure on already-clean repo).
-        // If Hermes is actually installed and working, treat as success.
-        if (existsSync(HERMES_PYTHON) && existsSync(HERMES_SCRIPT)) {
-          emit(
-            "\nInstall script exited with warnings, but Hermes is installed successfully.\n",
-          );
+      proc.stderr?.on("data", (data: Buffer) => {
+        emit(stripAnsi(data.toString()));
+      });
+
+      proc.on("close", (code) => {
+        if (code === 0) {
+          emit("\nInstallation complete!\n");
           resolve();
         } else {
-          reject(
-            new Error(
-              `Installation failed (exit code ${code}). You can try installing via terminal instead.`,
-            ),
-          );
+          // The install script can exit non-zero due to benign issues
+          // (e.g. git stash pop failure on already-clean repo).
+          // If Hermes is actually installed and working, treat as success.
+          if (existsSync(HERMES_PYTHON) && existsSync(HERMES_SCRIPT)) {
+            emit(
+              "\nInstall script exited with warnings, but Hermes is installed successfully.\n",
+            );
+            resolve();
+          } else {
+            reject(
+              new Error(
+                `Installation failed (exit code ${code}). You can try installing via terminal instead.`,
+              ),
+            );
+          }
         }
-      }
-    });
+      });
 
-    proc.on("error", (err) => {
-      reject(new Error(`Failed to start installer: ${err.message}`));
+      proc.on("error", (err) => {
+        reject(new Error(`Failed to start installer: ${err.message}`));
+      });
     });
-  });
+  } finally {
+    askpass?.cleanup();
+  }
 }
 
 // ────────────────────────────────────────────────────
@@ -648,20 +694,17 @@ export function discoverMemoryProviders(
     { description: string; envVars: string[]; pip?: string }
   > = {
     honcho: {
-      description:
-        "memory.providers.honcho",
+      description: "memory.providers.honcho",
       envVars: ["HONCHO_API_KEY"],
       pip: "honcho-ai",
     },
     hindsight: {
-      description:
-        "memory.providers.hindsight",
+      description: "memory.providers.hindsight",
       envVars: ["HINDSIGHT_API_KEY", "HINDSIGHT_API_URL", "HINDSIGHT_BANK_ID"],
       pip: "hindsight-client",
     },
     mem0: {
-      description:
-        "memory.providers.mem0",
+      description: "memory.providers.mem0",
       envVars: ["MEM0_API_KEY"],
       pip: "mem0ai",
     },
@@ -670,24 +713,20 @@ export function discoverMemoryProviders(
       envVars: ["RETAINDB_API_KEY"],
     },
     supermemory: {
-      description:
-        "memory.providers.supermemory",
+      description: "memory.providers.supermemory",
       envVars: ["SUPERMEMORY_API_KEY"],
       pip: "supermemory",
     },
     holographic: {
-      description:
-        "memory.providers.holographic",
+      description: "memory.providers.holographic",
       envVars: [],
     },
     openviking: {
-      description:
-        "memory.providers.openviking",
+      description: "memory.providers.openviking",
       envVars: ["OPENVIKING_ENDPOINT", "OPENVIKING_API_KEY"],
     },
     byterover: {
-      description:
-        "memory.providers.byterover",
+      description: "memory.providers.byterover",
       envVars: ["BRV_API_KEY"],
     },
   };

@@ -11,7 +11,8 @@ export default {
   baseUrlPlaceholder: "http://localhost:1234/v1",
   subtitle: "管理你的模型库。这些模型会出现在聊天页面的模型选择器中。",
   addModel: "添加模型",
-  emptyHint: "在这里添加模型后,就能在聊天页面的模型选择器中使用。你在设置页配置的模型也会自动加入这里。",
+  emptyHint:
+    "在这里添加模型后,就能在聊天页面的模型选择器中使用。你在设置页配置的模型也会自动加入这里。",
   editModel: "编辑模型",
   update: "更新",
   deleteModelTitle: "删除模型",
@@ -19,4 +20,7 @@ export default {
   no: "否",
   nameRequired: "名称和模型 ID 为必填项",
   customProviderHint: "仅在自定义或本地提供商时需要填写",
+  apiKeyLabel: "API Key",
+  apiKeyHint:
+    "保存为环境变量。会按 URL 匹配对应的环境变量名,否则使用 CUSTOM_API_KEY。",
 } as const;

@@ -135,20 +135,25 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
     try {
       const dirs = await fs.readdir(PROFILES_DIR);
       const profilePromises = dirs.map(async (name) => {
+        // Skip dotfiles like .DS_Store so they don't get mistaken for profiles.
+        if (name.startsWith(".")) return null;
+
         const profilePath = join(PROFILES_DIR, name);
         const stat = await fs.stat(profilePath);
         if (!stat.isDirectory()) return null;
 
-        const hasConfig = await fileExists(join(profilePath, "config.yaml"));
-        const hasEnvFile = await fileExists(join(profilePath, ".env"));
-        if (!hasConfig && !hasEnvFile) return null;
-
-        const [config, hasSoul, skillCount, gwRunning] = await Promise.all([
-          readProfileConfig(profilePath),
-          fileExists(join(profilePath, "SOUL.md")),
-          countSkills(profilePath),
-          isGatewayRunning(profilePath),
-        ]);
+        // Any subdirectory of ~/.hermes/profiles/ is treated as a profile.
+        // We deliberately do NOT require config.yaml or .env to exist —
+        // a freshly created profile may have neither yet, and filtering on
+        // them silently hides it from the UI (issue #19).
+        const [config, hasEnvFile, hasSoul, skillCount, gwRunning] =
+          await Promise.all([
+            readProfileConfig(profilePath),
+            fileExists(join(profilePath, ".env")),
+            fileExists(join(profilePath, "SOUL.md")),
+            countSkills(profilePath),
+            isGatewayRunning(profilePath),
+          ]);
 
         return {
           name,
