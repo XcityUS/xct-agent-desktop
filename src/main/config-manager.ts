@@ -20,19 +20,16 @@ const EnvironmentSchema = z.object({
   name: z.string(),
   apiBaseUrl: z.string().url(),
   cloudApiBaseUrl: z.string().url(),
-  stripePublicKey: z.string().optional(),
-  coinbasePublicKey: z.string().optional(),
+  walletApiUrl: z.string().url().optional(),
 });
 
 export type EnvConfig = z.infer<typeof EnvironmentSchema>;
 
 const SecretsSchema = z.object({
-  stripeSecretKey: z.string().optional(),
-  stripeWebhookSecret: z.string().optional(),
-  coinbaseApiKey: z.string().optional(),
-  coinbaseWebhookSecret: z.string().optional(),
   cloudApiKey: z.string().optional(),
   jwtSecret: z.string().optional(),
+  /** Long-lived user access token issued by xcity.one for wallet API calls. */
+  walletJwt: z.string().optional(),
 });
 
 export type SecretsConfig = z.infer<typeof SecretsSchema>;
@@ -166,10 +163,7 @@ env: development
 name: Hermes Dev
 apiBaseUrl: http://localhost:3000
 cloudApiBaseUrl: https://dev-api.hermes-desktop.ai
-
-# Public keys (safe to commit)
-stripePublicKey: pk_test_XXXXXXXXXXXXXXXXXXXXXXXX
-coinbasePublicKey: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+walletApiUrl: http://localhost:3010
 `,
 
   staging: `\
@@ -180,10 +174,7 @@ env: staging
 name: Hermes Staging
 apiBaseUrl: https://staging-api.hermes-desktop.ai
 cloudApiBaseUrl: https://staging-cloud.hermes-desktop.ai
-
-# Public keys
-stripePublicKey: pk_live_XXXXXXXXXXXXXXXXXXXXXXXX
-coinbasePublicKey: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+walletApiUrl: https://staging-wallet.xcity.one
 `,
 
   production: `\
@@ -194,42 +185,30 @@ env: production
 name: Hermes Production
 apiBaseUrl: https://api.hermes-desktop.ai
 cloudApiBaseUrl: https://cloud.hermes-desktop.ai
-
-# Public keys
-stripePublicKey: pk_live_XXXXXXXXXXXXXXXXXXXXXXXX
-coinbasePublicKey: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+walletApiUrl: https://wallet.xcity.one
 `,
 };
 
 export const SECRETS_TEMPLATE: Record<string, string> = {
   development: `\
 {
-  "stripeSecretKey": "<STRIPE_SECRET_KEY>",
-  "stripeWebhookSecret": "<STRIPE_WEBHOOK_SECRET>",
-  "coinbaseApiKey": "<COINBASE_API_KEY>",
-  "coinbaseWebhookSecret": "<COINBASE_WEBHOOK_SECRET>",
   "cloudApiKey": "",
-  "jwtSecret": "dev-jwt-secret-change-in-prod"
+  "jwtSecret": "dev-jwt-secret-change-in-prod",
+  "walletJwt": ""
 }
 `,
   staging: `\
 {
-  "stripeSecretKey": "",
-  "stripeWebhookSecret": "",
-  "coinbaseApiKey": "",
-  "coinbaseWebhookSecret": "",
   "cloudApiKey": "",
-  "jwtSecret": ""
+  "jwtSecret": "",
+  "walletJwt": ""
 }
 `,
   production: `\
 {
-  "stripeSecretKey": "",
-  "stripeWebhookSecret": "",
-  "coinbaseApiKey": "",
-  "coinbaseWebhookSecret": "",
   "cloudApiKey": "",
-  "jwtSecret": ""
+  "jwtSecret": "",
+  "walletJwt": ""
 }
 `,
 };

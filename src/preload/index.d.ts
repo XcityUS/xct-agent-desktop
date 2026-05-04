@@ -429,6 +429,57 @@ interface HermesAPI {
     logFile?: string,
     lines?: number,
   ) => Promise<{ content: string; path: string }>;
+
+  // Wallet — central xct-wallet client (https://wallet.xcity.one)
+  walletIsConnected: () => Promise<boolean>;
+  walletGetBalance: () => Promise<WalletResult<{ balance: WalletBalance }>>;
+  walletCreateCheckout: (params: {
+    pack_id: string;
+    payment_method: WalletPaymentMethod;
+    success_url?: string;
+    cancel_url?: string;
+  }) => Promise<WalletResult<{ session: WalletCheckoutSession }>>;
+  walletGetHistory: (
+    limit?: number,
+  ) => Promise<WalletResult<{ orders: WalletOrder[] }>>;
+  walletSetSpendCap: (
+    monthlyCapUsd: number | null,
+  ) => Promise<WalletResult<Record<string, never>>>;
+  walletOpenCheckout: (
+    url: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+}
+
+type WalletResult<T> =
+  | ({ ok: true } & T)
+  | { ok: false; error: string; status?: number };
+
+type WalletPaymentMethod = "card" | "alipay" | "wechat_pay" | "crypto";
+
+interface WalletBalance {
+  wallet_id: string;
+  balance: number;
+  monthly_cap_usd: number | null;
+  spend_this_period_usd: number;
+  plan: "free" | "pro_monthly" | "team_monthly" | "enterprise";
+  plan_status: "active" | "past_due" | "canceled" | "trialing" | "incomplete";
+}
+
+interface WalletCheckoutSession {
+  url: string;
+  provider: "stripe" | "coinbase";
+  session_id: string;
+}
+
+interface WalletOrder {
+  id: string;
+  status: "pending" | "completed" | "failed" | "expired" | "refunded";
+  provider: "stripe" | "coinbase";
+  amount_usd: number;
+  credits_granted: number;
+  payment_method: WalletPaymentMethod | null;
+  created_at: string;
+  completed_at: string | null;
 }
 
 declare global {

@@ -1,76 +1,38 @@
 /**
- * OrderHistoryPage — Recharge & Order History
- * Sprint 4: S4-FE-02
- *
- * Displays user's recharge history and order status.
+ * OrderHistoryPage — recharge order list, sourced from xct-wallet.
  */
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertCircle,
   ArrowLeft,
-  History,
   CheckCircle,
   Clock,
-  XCircle,
-  AlertCircle,
-  RefreshCw,
   Coins,
   Download,
+  History,
+  RefreshCw,
+  Wallet,
+  XCircle,
 } from "lucide-react";
+
+type OrderStatus = "pending" | "completed" | "failed" | "expired" | "refunded";
 
 interface Order {
   id: string;
-  status: "pending" | "processing" | "completed" | "failed" | "refunded" | "expired";
-  tokenAmount: number;
-  bonusAmount: number;
-  amount: number; // in cents
-  currency: string;
+  status: OrderStatus;
   provider: "stripe" | "coinbase";
-  createdAt: number;
-  completedAt?: number;
+  amount_usd: number;
+  credits_granted: number;
+  payment_method: "card" | "alipay" | "wechat_pay" | "crypto" | null;
+  created_at: string;
+  completed_at: string | null;
 }
 
-// Mock data — in production comes from IPC
-function mockOrders(): Order[] {
-  const now = Date.now();
-  return [
-    {
-      id: "order-001",
-      status: "completed",
-      tokenAmount: 1100,
-      bonusAmount: 100,
-      amount: 1000,
-      currency: "usd",
-      provider: "stripe",
-      createdAt: now - 86400000 * 2,
-      completedAt: now - 86400000 * 2 + 5000,
-    },
-    {
-      id: "order-002",
-      status: "completed",
-      tokenAmount: 500,
-      bonusAmount: 0,
-      amount: 500,
-      currency: "usd",
-      provider: "coinbase",
-      createdAt: now - 86400000 * 5,
-      completedAt: now - 86400000 * 5 + 120000,
-    },
-    {
-      id: "order-003",
-      status: "pending",
-      tokenAmount: 2875,
-      bonusAmount: 375,
-      amount: 2500,
-      currency: "usd",
-      provider: "stripe",
-      createdAt: now - 3600000,
-    },
-  ];
-}
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString("en-US", {
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -79,50 +41,26 @@ function formatDate(timestamp: number): string {
   });
 }
 
-function formatCurrency(amountCents: number, currency: string): string {
-  return new Intl.NumberFormat("en-US", {
+function formatUsd(amount: number): string {
+  return new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(amountCents / 100);
+    currency: "USD",
+  }).format(amount);
 }
 
-function StatusBadge({ status }: { status: Order["status"] }): React.JSX.Element {
-  const configs: Record<
-    Order["status"],
-    { icon: React.ReactNode; label: string; className: string }
-  > = {
-    completed: {
-      icon: <CheckCircle size={12} />,
-      label: "Completed",
-      className: "status-completed",
-    },
-    pending: {
-      icon: <Clock size={12} />,
-      label: "Pending",
-      className: "status-pending",
-    },
-    processing: {
-      icon: <RefreshCw size={12} className="spin" />,
-      label: "Processing",
-      className: "status-processing",
-    },
-    failed: {
-      icon: <XCircle size={12} />,
-      label: "Failed",
-      className: "status-failed",
-    },
-    refunded: {
-      icon: <AlertCircle size={12} />,
-      label: "Refunded",
-      className: "status-refunded",
-    },
-    expired: {
-      icon: <XCircle size={12} />,
-      label: "Expired",
-      className: "status-expired",
-    },
-  };
-  const cfg = configs[status];
+const STATUS_CONFIG: Record<
+  OrderStatus,
+  { icon: React.ReactNode; label: string; className: string }
+> = {
+  completed: { icon: <CheckCircle size={12} />, label: "Completed", className: "status-completed" },
+  pending: { icon: <Clock size={12} />, label: "Pending", className: "status-pending" },
+  failed: { icon: <XCircle size={12} />, label: "Failed", className: "status-failed" },
+  refunded: { icon: <AlertCircle size={12} />, label: "Refunded", className: "status-refunded" },
+  expired: { icon: <XCircle size={12} />, label: "Expired", className: "status-expired" },
+};
+
+function StatusBadge({ status }: { status: OrderStatus }): React.JSX.Element {
+  const cfg = STATUS_CONFIG[status];
   return (
     <span className={`order-status-badge ${cfg.className}`}>
       {cfg.icon}
@@ -133,52 +71,69 @@ function StatusBadge({ status }: { status: Order["status"] }): React.JSX.Element
 
 interface OrderHistoryPageProps {
   onBack?: () => void;
-  userId?: string;
 }
 
-function OrderHistoryPage({
-  onBack,
-  userId = "demo-user",
-}: OrderHistoryPageProps): React.JSX.Element {
+function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element {
+  const [connected, setConnected] = useState<boolean | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | Order["status"]>("all");
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | OrderStatus>("all");
+
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const isConn = await window.hermesAPI.walletIsConnected();
+    setConnected(isConn);
+    if (!isConn) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+    const res = await window.hermesAPI.walletGetHistory(50);
+    if (!res.ok) {
+      if (res.error === "wallet_not_connected") {
+        setConnected(false);
+      } else {
+        setError(res.error);
+      }
+      setOrders([]);
+    } else {
+      setOrders(res.orders);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     loadOrders();
-  }, [userId]);
+  }, [loadOrders]);
 
-  const loadOrders = async () => {
-    setLoading(true);
-    // In production: const result = await window.api.getOrderHistory(userId);
-    await new Promise((r) => setTimeout(r, 600));
-    setOrders(mockOrders());
-    setLoading(false);
-  };
+  const filtered = useMemo(
+    () => (filter === "all" ? orders : orders.filter((o) => o.status === filter)),
+    [orders, filter],
+  );
 
-  const filteredOrders =
-    filter === "all" ? orders : orders.filter((o) => o.status === filter);
-
-  const totalSpent = orders
-    .filter((o) => o.status === "completed")
-    .reduce((sum, o) => sum + o.amount, 0);
-
-  const totalTokens = orders
-    .filter((o) => o.status === "completed")
-    .reduce((sum, o) => sum + o.tokenAmount + o.bonusAmount, 0);
+  const totals = useMemo(() => {
+    const completed = orders.filter((o) => o.status === "completed");
+    return {
+      spent: completed.reduce((s, o) => s + o.amount_usd, 0),
+      credits: completed.reduce((s, o) => s + o.credits_granted, 0),
+      count: completed.length,
+    };
+  }, [orders]);
 
   const handleExportCSV = () => {
-    const headers = ["Order ID", "Date", "Status", "Tokens", "Bonus", "Amount", "Provider"];
-    const rows = filteredOrders.map((o) => [
+    const headers = ["Order ID", "Created", "Status", "Credits", "Amount USD", "Provider", "Method"];
+    const rows = filtered.map((o) => [
       o.id,
-      formatDate(o.createdAt),
+      formatDate(o.created_at),
       o.status,
-      o.tokenAmount.toString(),
-      o.bonusAmount.toString(),
-      formatCurrency(o.amount, o.currency),
+      o.credits_granted.toString(),
+      formatUsd(o.amount_usd),
       o.provider,
+      o.payment_method ?? "",
     ]);
-    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -188,9 +143,32 @@ function OrderHistoryPage({
     URL.revokeObjectURL(url);
   };
 
+  if (connected === false) {
+    return (
+      <div className="order-history-page">
+        <div className="order-header">
+          {onBack && (
+            <button className="order-back-btn" onClick={onBack}>
+              <ArrowLeft size={18} />
+            </button>
+          )}
+          <div className="order-title">
+            <History size={24} />
+            <h1>Order History</h1>
+          </div>
+        </div>
+        <div className="order-empty">
+          <Wallet size={48} />
+          <h3>Wallet not connected</h3>
+          <p>Connect your Xcity wallet in Settings to see your recharge history.</p>
+        </div>
+        <Styles />
+      </div>
+    );
+  }
+
   return (
     <div className="order-history-page">
-      {/* Header */}
       <div className="order-header">
         {onBack && (
           <button className="order-back-btn" onClick={onBack}>
@@ -211,28 +189,24 @@ function OrderHistoryPage({
         </button>
       </div>
 
-      {/* Stats Summary */}
       <div className="order-stats">
         <div className="stat-card">
           <Coins size={20} />
           <div className="stat-content">
-            <span className="stat-value">{totalTokens.toLocaleString()}</span>
-            <span className="stat-label">Total XCT Earned</span>
+            <span className="stat-value">{totals.credits.toLocaleString()}</span>
+            <span className="stat-label">Total credits</span>
           </div>
         </div>
         <div className="stat-card">
-          <span className="stat-value">
-            {formatCurrency(totalSpent, "usd")}
-          </span>
-          <span className="stat-label">Total Spent</span>
+          <span className="stat-value">{formatUsd(totals.spent)}</span>
+          <span className="stat-label">Total spent</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">{orders.filter((o) => o.status === "completed").length}</span>
-          <span className="stat-label">Completed Orders</span>
+          <span className="stat-value">{totals.count}</span>
+          <span className="stat-label">Completed</span>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="order-filters">
         {(["all", "completed", "pending", "failed"] as const).map((f) => (
           <button
@@ -246,32 +220,34 @@ function OrderHistoryPage({
         <button
           className="export-btn"
           onClick={handleExportCSV}
-          disabled={filteredOrders.length === 0}
+          disabled={filtered.length === 0}
         >
           <Download size={14} />
           Export CSV
         </button>
       </div>
 
-      {/* Orders List */}
+      {error && (
+        <div className="order-error">
+          <AlertCircle size={18} />
+          <span>{error}</span>
+        </div>
+      )}
+
       {loading ? (
         <div className="order-loading">
           <RefreshCw size={24} className="spin" />
-          <span>Loading orders...</span>
+          <span>Loading orders…</span>
         </div>
-      ) : filteredOrders.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="order-empty">
           <History size={48} />
-          <h3>No orders found</h3>
-          <p>
-            {filter === "all"
-              ? "You haven't placed any orders yet."
-              : `No ${filter} orders.`}
-          </p>
+          <h3>No orders</h3>
+          <p>{filter === "all" ? "You haven't placed any orders yet." : `No ${filter} orders.`}</p>
         </div>
       ) : (
         <div className="order-list">
-          {filteredOrders.map((order) => (
+          {filtered.map((order) => (
             <div key={order.id} className="order-card">
               <div className="order-card-header">
                 <div className="order-id">
@@ -284,40 +260,30 @@ function OrderHistoryPage({
               <div className="order-card-body">
                 <div className="order-tokens">
                   <Coins size={18} />
-                  <span className="tokens-amount">
-                    {order.tokenAmount.toLocaleString()}
-                  </span>
-                  {order.bonusAmount > 0 && (
-                    <span className="tokens-bonus">
-                      +{order.bonusAmount.toLocaleString()} bonus
-                    </span>
-                  )}
-                  <span className="tokens-label">XCT</span>
+                  <span className="tokens-amount">{order.credits_granted.toLocaleString()}</span>
+                  <span className="tokens-label">credits</span>
                 </div>
 
                 <div className="order-details">
                   <div className="order-detail-row">
                     <span>Amount</span>
-                    <span className="detail-value">
-                      {formatCurrency(order.amount, order.currency)}
-                    </span>
+                    <span className="detail-value">{formatUsd(order.amount_usd)}</span>
                   </div>
                   <div className="order-detail-row">
                     <span>Provider</span>
                     <span className="detail-value provider">
-                      {order.provider === "stripe" ? "Credit Card" : "Crypto"}
+                      {order.provider === "stripe" ? "Stripe" : "Coinbase Commerce"}
+                      {order.payment_method ? ` · ${order.payment_method}` : ""}
                     </span>
                   </div>
                   <div className="order-detail-row">
                     <span>Created</span>
-                    <span className="detail-value">{formatDate(order.createdAt)}</span>
+                    <span className="detail-value">{formatDate(order.created_at)}</span>
                   </div>
-                  {order.completedAt && (
+                  {order.completed_at && (
                     <div className="order-detail-row">
                       <span>Completed</span>
-                      <span className="detail-value">
-                        {formatDate(order.completedAt)}
-                      </span>
+                      <span className="detail-value">{formatDate(order.completed_at)}</span>
                     </div>
                   )}
                 </div>
@@ -327,177 +293,58 @@ function OrderHistoryPage({
         </div>
       )}
 
-      <style>{`
-        .order-history-page {
-          padding: 24px;
-          max-width: 720px;
-          margin: 0 auto;
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-        .order-header {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-        .order-back-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 8px;
-          border-radius: 8px;
-          color: var(--color-fg-muted, #888);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .order-back-btn:hover { background: var(--color-bg-secondary, #f0f0f0); }
-        .order-title {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          flex: 1;
-        }
-        .order-title h1 { font-size: 24px; font-weight: 700; margin: 0; }
-        .order-refresh-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 8px;
-          border-radius: 8px;
-          color: var(--color-fg-muted, #888);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .order-refresh-btn:hover { background: var(--color-bg-secondary, #f0f0f0); }
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        .order-stats {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
-        }
-        .stat-card {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 16px;
-          background: var(--color-bg-secondary, #f5f5f5);
-          border-radius: 12px;
-          color: var(--color-fg-muted, #888);
-        }
-        .stat-content { display: flex; flex-direction: column; }
-        .stat-value { font-size: 18px; font-weight: 800; color: var(--color-fg, #222); }
-
-        .order-filters {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          align-items: center;
-        }
-        .filter-btn {
-          padding: 6px 16px;
-          border-radius: 20px;
-          border: 1px solid var(--color-border, #e0e0e0);
-          background: none;
-          font-size: 13px;
-          cursor: pointer;
-          color: var(--color-fg-muted, #888);
-          transition: all 0.15s;
-        }
-        .filter-btn:hover { border-color: var(--color-accent, #0066cc); color: var(--color-accent, #0066cc); }
-        .filter-btn.active {
-          background: var(--color-accent, #0066cc);
-          border-color: var(--color-accent, #0066cc);
-          color: white;
-        }
-        .export-btn {
-          margin-left: auto;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 16px;
-          border-radius: 20px;
-          border: 1px solid var(--color-border, #e0e0e0);
-          background: none;
-          font-size: 13px;
-          cursor: pointer;
-          color: var(--color-fg-muted, #888);
-        }
-        .export-btn:hover { border-color: var(--color-success, #22c55e); color: var(--color-success, #22c55e); }
-        .export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .order-loading, .order-empty {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-          padding: 48px;
-          color: var(--color-fg-muted, #888);
-          text-align: center;
-        }
-        .order-empty h3 { margin: 0; color: var(--color-fg, #222); }
-        .order-empty p { margin: 0; }
-
-        .order-list { display: flex; flex-direction: column; gap: 12px; }
-        .order-card {
-          border: 1px solid var(--color-border, #e0e0e0);
-          border-radius: 12px;
-          overflow: hidden;
-          background: var(--color-bg, #fff);
-        }
-        .order-card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px 16px;
-          border-bottom: 1px solid var(--color-border, #e0e0e0);
-          background: var(--color-bg-secondary, #f5f5f5);
-        }
-        .order-id { display: flex; align-items: center; gap: 8px; }
-        .order-id-label { font-size: 11px; color: var(--color-fg-muted, #888); }
-        .order-id code { font-size: 12px; font-family: monospace; color: var(--color-fg, #222); }
-        .order-card-body { padding: 16px; display: flex; gap: 24px; align-items: flex-start; }
-        .order-tokens {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: var(--color-accent, #0066cc);
-          flex-shrink: 0;
-        }
-        .tokens-amount { font-size: 22px; font-weight: 800; }
-        .tokens-bonus { font-size: 12px; color: var(--color-success, #22c55e); font-weight: 600; }
-        .tokens-label { font-size: 12px; color: var(--color-fg-muted, #888); }
-        .order-details { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-        .order-detail-row {
-          display: flex;
-          justify-content: space-between;
-          font-size: 13px;
-          color: var(--color-fg-muted, #888);
-        }
-        .detail-value { color: var(--color-fg, #222); font-weight: 500; }
-        .detail-value.provider { text-transform: capitalize; }
-
-        .order-status-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          padding: 3px 10px;
-          border-radius: 12px;
-          font-size: 12px;
-          font-weight: 600;
-        }
-        .status-completed { background: #dcfce7; color: #16a34a; }
-        .status-pending { background: #fef9c3; color: #a16207; }
-        .status-processing { background: #dbeafe; color: #2563eb; }
-        .status-failed { background: #fee2e2; color: #dc2626; }
-        .status-refunded { background: #f3e8ff; color: #7c3aed; }
-        .status-expired { background: #f1f5f9; color: #64748b; }
-      `}</style>
+      <Styles />
     </div>
+  );
+}
+
+function Styles(): React.JSX.Element {
+  return (
+    <style>{`
+      .order-history-page { padding: 24px; max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+      .order-header { display: flex; align-items: center; gap: 16px; }
+      .order-back-btn, .order-refresh-btn { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: var(--color-fg-muted, #888); display: flex; align-items: center; justify-content: center; }
+      .order-back-btn:hover, .order-refresh-btn:hover { background: var(--color-bg-secondary, #f0f0f0); }
+      .order-title { display: flex; align-items: center; gap: 12px; flex: 1; }
+      .order-title h1 { font-size: 24px; font-weight: 700; margin: 0; }
+      .spin { animation: spin 1s linear infinite; }
+      @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      .order-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .stat-card { display: flex; align-items: center; gap: 12px; padding: 16px; background: var(--color-bg-secondary, #f5f5f5); border-radius: 12px; color: var(--color-fg-muted, #888); }
+      .stat-content { display: flex; flex-direction: column; }
+      .stat-value { font-size: 18px; font-weight: 800; color: var(--color-fg, #222); }
+      .order-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .filter-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--color-border, #e0e0e0); background: none; font-size: 13px; cursor: pointer; color: var(--color-fg-muted, #888); transition: all 0.15s; }
+      .filter-btn:hover { border-color: var(--color-accent, #0066cc); color: var(--color-accent, #0066cc); }
+      .filter-btn.active { background: var(--color-accent, #0066cc); border-color: var(--color-accent, #0066cc); color: white; }
+      .export-btn { margin-left: auto; display: flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 20px; border: 1px solid var(--color-border, #e0e0e0); background: none; font-size: 13px; cursor: pointer; color: var(--color-fg-muted, #888); }
+      .export-btn:hover:not(:disabled) { border-color: var(--color-success, #22c55e); color: var(--color-success, #22c55e); }
+      .export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .order-loading, .order-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px; color: var(--color-fg-muted, #888); text-align: center; }
+      .order-empty h3 { margin: 0; color: var(--color-fg, #222); }
+      .order-empty p { margin: 0; max-width: 420px; }
+      .order-error { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: color-mix(in srgb, #ef4444 10%, white); border: 1px solid #ef4444; border-radius: 8px; color: #dc2626; font-size: 14px; }
+      .order-list { display: flex; flex-direction: column; gap: 12px; }
+      .order-card { border: 1px solid var(--color-border, #e0e0e0); border-radius: 12px; overflow: hidden; background: var(--color-bg, #fff); }
+      .order-card-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--color-border, #e0e0e0); background: var(--color-bg-secondary, #f5f5f5); }
+      .order-id { display: flex; align-items: center; gap: 8px; }
+      .order-id-label { font-size: 11px; color: var(--color-fg-muted, #888); }
+      .order-id code { font-size: 12px; font-family: monospace; color: var(--color-fg, #222); }
+      .order-card-body { padding: 16px; display: flex; gap: 24px; align-items: flex-start; }
+      .order-tokens { display: flex; align-items: center; gap: 8px; color: var(--color-accent, #0066cc); flex-shrink: 0; }
+      .tokens-amount { font-size: 22px; font-weight: 800; }
+      .tokens-label { font-size: 12px; color: var(--color-fg-muted, #888); }
+      .order-details { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+      .order-detail-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--color-fg-muted, #888); }
+      .detail-value { color: var(--color-fg, #222); font-weight: 500; }
+      .detail-value.provider { text-transform: capitalize; }
+      .order-status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+      .status-completed { background: #dcfce7; color: #16a34a; }
+      .status-pending { background: #fef9c3; color: #a16207; }
+      .status-failed { background: #fee2e2; color: #dc2626; }
+      .status-refunded { background: #f3e8ff; color: #7c3aed; }
+      .status-expired { background: #f1f5f9; color: #64748b; }
+    `}</style>
   );
 }
 
