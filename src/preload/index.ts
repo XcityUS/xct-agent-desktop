@@ -631,7 +631,65 @@ const hermesAPI = {
     lines?: number,
   ): Promise<{ content: string; path: string }> =>
     ipcRenderer.invoke("read-logs", logFile, lines),
+
+  // Wallet (xct-wallet at https://wallet.xcity.one)
+  walletIsConnected: (): Promise<boolean> =>
+    ipcRenderer.invoke("wallet-is-connected"),
+  walletGetBalance: (): Promise<WalletResult<{ balance: WalletBalance }>> =>
+    ipcRenderer.invoke("wallet-get-balance"),
+  walletCreateCheckout: (params: {
+    pack_id: string;
+    payment_method: "card" | "alipay" | "wechat_pay" | "crypto";
+    success_url?: string;
+    cancel_url?: string;
+  }): Promise<WalletResult<{ session: WalletCheckoutSession }>> =>
+    ipcRenderer.invoke("wallet-create-checkout", params),
+  walletGetHistory: (
+    limit?: number,
+  ): Promise<WalletResult<{ orders: WalletOrder[] }>> =>
+    ipcRenderer.invoke("wallet-get-history", limit),
+  walletSetSpendCap: (
+    monthlyCapUsd: number | null,
+  ): Promise<WalletResult<Record<string, never>>> =>
+    ipcRenderer.invoke("wallet-set-spend-cap", monthlyCapUsd),
+  walletOpenCheckout: (
+    url: string,
+  ): Promise<{ ok: true } | { ok: false; error: string }> =>
+    ipcRenderer.invoke("wallet-open-checkout", url),
 };
+
+// ── Wallet types (kept inline for the preload bridge — full type module lives
+// in src/main/wallet/types.ts) ───────────────────────────────────────────────
+
+type WalletResult<T> =
+  | ({ ok: true } & T)
+  | { ok: false; error: string; status?: number };
+
+interface WalletBalance {
+  wallet_id: string;
+  balance: number;
+  monthly_cap_usd: number | null;
+  spend_this_period_usd: number;
+  plan: "free" | "pro_monthly" | "team_monthly" | "enterprise";
+  plan_status: "active" | "past_due" | "canceled" | "trialing" | "incomplete";
+}
+
+interface WalletCheckoutSession {
+  url: string;
+  provider: "stripe" | "coinbase";
+  session_id: string;
+}
+
+interface WalletOrder {
+  id: string;
+  status: "pending" | "completed" | "failed" | "expired" | "refunded";
+  provider: "stripe" | "coinbase";
+  amount_usd: number;
+  credits_granted: number;
+  payment_method: "card" | "alipay" | "wechat_pay" | "crypto" | null;
+  created_at: string;
+  completed_at: string | null;
+}
 
 if (process.contextIsolated) {
   try {

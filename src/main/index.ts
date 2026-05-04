@@ -68,6 +68,7 @@ import {
   getPlatformEnabled,
   setPlatformEnabled,
 } from "./config";
+import * as walletApi from "./wallet";
 import { listSessions, getSessionMessages, searchSessions } from "./sessions";
 import {
   syncSessionCache,
@@ -673,6 +674,77 @@ function setupIPC(): void {
   ipcMain.handle("read-logs", (_event, logFile?: string, lines?: number) =>
     readLogs(logFile, lines),
   );
+
+  // Wallet (xct-wallet at https://wallet.xcity.one)
+  ipcMain.handle("wallet-is-connected", () => walletApi.isConnected());
+  ipcMain.handle("wallet-get-balance", async () => {
+    try {
+      const balance = await walletApi.getBalance();
+      return { ok: true as const, balance };
+    } catch (e) {
+      return mapWalletError(e);
+    }
+  });
+  ipcMain.handle(
+    "wallet-create-checkout",
+    async (
+      _event,
+      params: {
+        pack_id: walletApi.RechargePackId;
+        payment_method: walletApi.PaymentMethod;
+        success_url?: string;
+        cancel_url?: string;
+      },
+    ) => {
+      try {
+        const session = await walletApi.createCheckout(params);
+        return { ok: true as const, session };
+      } catch (e) {
+        return mapWalletError(e);
+      }
+    },
+  );
+  ipcMain.handle("wallet-get-history", async (_event, limit?: number) => {
+    try {
+      const data = await walletApi.getOrderHistory(limit);
+      return { ok: true as const, orders: data.orders };
+    } catch (e) {
+      return mapWalletError(e);
+    }
+  });
+  ipcMain.handle(
+    "wallet-set-spend-cap",
+    async (_event, monthlyCapUsd: number | null) => {
+      try {
+        await walletApi.setSpendCap(monthlyCapUsd);
+        return { ok: true as const };
+      } catch (e) {
+        return mapWalletError(e);
+      }
+    },
+  );
+  ipcMain.handle("wallet-open-checkout", async (_event, url: string) => {
+    if (!url || (!url.startsWith("https://") && !url.startsWith("http://"))) {
+      return { ok: false as const, error: "invalid_url" };
+    }
+    await shell.openExternal(url);
+    return { ok: true as const };
+  });
+}
+
+function mapWalletError(
+  e: unknown,
+): { ok: false; error: string; status?: number } {
+  if (e instanceof walletApi.WalletNotConnectedError) {
+    return { ok: false, error: "wallet_not_connected" };
+  }
+  if (e instanceof walletApi.WalletApiError) {
+    return { ok: false, error: e.message, status: e.status };
+  }
+  return {
+    ok: false,
+    error: e instanceof Error ? e.message : String(e),
+  };
 }
 
 function buildMenu(): void {
