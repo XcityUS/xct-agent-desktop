@@ -70,6 +70,7 @@ import {
   setPlatformEnabled,
 } from "./config";
 import * as walletApi from "./wallet";
+import * as authApi from "./auth";
 import { listSessions, getSessionMessages, searchSessions } from "./sessions";
 import {
   syncSessionCache,
@@ -743,6 +744,94 @@ function setupIPC(): void {
       return mapWalletError(e);
     }
   });
+
+  // ── Auth (GoTrue at auth.xcity.one) ────────────────────────────────────
+  ipcMain.handle("auth-get-session", () => authApi.getSessionView());
+  ipcMain.handle(
+    "auth-sign-in",
+    async (_event, email: string, password: string) => {
+      try {
+        const view = await authApi.signIn(email, password);
+        return { ok: true as const, session: view };
+      } catch (e) {
+        return mapAuthError(e);
+      }
+    },
+  );
+  ipcMain.handle(
+    "auth-sign-up",
+    async (_event, email: string, password: string) => {
+      try {
+        const result = await authApi.signUp(email, password);
+        if (result.kind === "session") {
+          return {
+            ok: true as const,
+            kind: "session" as const,
+            session: authApi.getSessionView(),
+          };
+        }
+        return {
+          ok: true as const,
+          kind: "requires_verification" as const,
+          email: result.user.email,
+        };
+      } catch (e) {
+        return mapAuthError(e);
+      }
+    },
+  );
+  ipcMain.handle("auth-sign-out", async () => {
+    try {
+      await authApi.signOut();
+      return { ok: true as const };
+    } catch (e) {
+      return mapAuthError(e);
+    }
+  });
+  ipcMain.handle("auth-recover-password", async (_event, email: string) => {
+    try {
+      await authApi.recoverPassword(email);
+      return { ok: true as const };
+    } catch (e) {
+      return mapAuthError(e);
+    }
+  });
+  ipcMain.handle("auth-refresh", async () => {
+    try {
+      const tok = await authApi.refreshIfNeeded();
+      return { ok: true as const, signed_in: Boolean(tok) };
+    } catch (e) {
+      return mapAuthError(e);
+    }
+  });
+  ipcMain.handle("auth-start-google-oauth", async () => {
+    try {
+      const { url } = authApi.startOAuth("google");
+      await shell.openExternal(url);
+      return { ok: true as const };
+    } catch (e) {
+      return mapAuthError(e);
+    }
+  });
+
+  // Forward session-changed events from main → renderer.
+  authApi.on("session-changed", () => {
+    BrowserWindow.getAllWindows().forEach((w) => {
+      w.webContents.send("auth-session-changed", authApi.getSessionView());
+    });
+  });
+}
+
+function mapAuthError(
+  e: unknown,
+): { ok: false; error: string; code?: string; status?: number } {
+  if (e instanceof authApi.AuthError) {
+    return { ok: false, error: e.message, code: e.code, status: e.status };
+  }
+  return {
+    ok: false,
+    error: e instanceof Error ? e.message : String(e),
+  };
 }
 
 function mapWalletError(
@@ -932,6 +1021,70 @@ function setupUpdater(): void {
   setTimeout(() => {
     autoUpdater.checkForUpdates().catch(() => {});
   }, 5000);
+}
+
+// ── Custom URL scheme for OAuth deep-link callbacks ───────────────────────
+// Register `xct-agent://` so GoTrue's redirect lands in Electron, not a
+// browser. Must run BEFORE app.whenReady() per Electron docs.
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(authApi.CUSTOM_PROTOCOL, process.execPath, [
+      require("path").resolve(process.argv[1]),
+    ]);
+  }
+} else {
+  app.setAsDefaultProtocolClient(authApi.CUSTOM_PROTOCOL);
+}
+
+// Single-instance lock — second launch funnels its argv into our handler
+// so the OS can route deep links via process spawn (Windows / Linux).
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, argv) => {
+    const url = argv.find((a) => a.startsWith(`${authApi.CUSTOM_PROTOCOL}://`));
+    if (url) handleAuthDeepLink(url);
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+  });
+}
+
+// macOS routes deep links via `open-url`.
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  if (url.startsWith(`${authApi.CUSTOM_PROTOCOL}://`)) {
+    handleAuthDeepLink(url);
+  }
+});
+
+function handleAuthDeepLink(url: string): void {
+  authApi
+    .handleOAuthCallback(url)
+    .then(() => {
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win) {
+        if (win.isMinimized()) win.restore();
+        win.focus();
+        win.webContents.send("auth-oauth-completed", { ok: true });
+      }
+    })
+    .catch((e: unknown) => {
+      const code =
+        e instanceof authApi.AuthError ? e.code : "unknown";
+      const message = e instanceof Error ? e.message : String(e);
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win) {
+        win.webContents.send("auth-oauth-completed", {
+          ok: false,
+          code,
+          error: message,
+        });
+      }
+    });
 }
 
 app.whenReady().then(() => {

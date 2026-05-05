@@ -21,6 +21,8 @@ const EnvironmentSchema = z.object({
   apiBaseUrl: z.string().url(),
   cloudApiBaseUrl: z.string().url(),
   walletApiUrl: z.string().url().optional(),
+  authApiUrl: z.string().url().optional(),
+  authGoogleEnabled: z.boolean().optional(),
 });
 
 export type EnvConfig = z.infer<typeof EnvironmentSchema>;
@@ -28,8 +30,18 @@ export type EnvConfig = z.infer<typeof EnvironmentSchema>;
 const SecretsSchema = z.object({
   cloudApiKey: z.string().optional(),
   jwtSecret: z.string().optional(),
-  /** Long-lived user access token issued by xcity.one for wallet API calls. */
+  /** @deprecated since Phase 6 — replaced by userAccessToken. Tolerated for migration. */
   walletJwt: z.string().optional(),
+  /** Phase 6: GoTrue access token (HS256 JWT, short-lived ~5 min). */
+  userAccessToken: z.string().optional(),
+  /** Phase 6: GoTrue refresh token (long-lived, rotates each refresh). */
+  userRefreshToken: z.string().optional(),
+  /** Phase 6: Unix-seconds when userAccessToken expires. Stored as string for json safety. */
+  tokenExpiresAt: z.string().optional(),
+  /** Phase 6: cached email for the signed-in user (UI hint; truth is in JWT). */
+  userEmail: z.string().optional(),
+  /** Phase 6: GoTrue user id (uuid). */
+  userId: z.string().optional(),
 });
 
 export type SecretsConfig = z.infer<typeof SecretsSchema>;
@@ -193,6 +205,8 @@ name: Hermes Dev
 apiBaseUrl: http://localhost:3000
 cloudApiBaseUrl: https://dev-api.hermes-desktop.ai
 walletApiUrl: http://localhost:3010
+authApiUrl: https://auth.xcity.one
+authGoogleEnabled: false
 `,
 
   staging: `\
@@ -204,6 +218,8 @@ name: Hermes Staging
 apiBaseUrl: https://staging-api.hermes-desktop.ai
 cloudApiBaseUrl: https://staging-cloud.hermes-desktop.ai
 walletApiUrl: https://staging-wallet.xcity.one
+authApiUrl: https://auth.xcity.one
+authGoogleEnabled: true
 `,
 
   production: `\
@@ -215,6 +231,8 @@ name: Hermes Production
 apiBaseUrl: https://api.hermes-desktop.ai
 cloudApiBaseUrl: https://cloud.hermes-desktop.ai
 walletApiUrl: https://wallet.xcity.one
+authApiUrl: https://auth.xcity.one
+authGoogleEnabled: true
 `,
 };
 

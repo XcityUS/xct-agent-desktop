@@ -16,6 +16,7 @@
  */
 
 import { getSecrets, getConfig, getCurrentEnv, patchSecrets } from '../config-manager.js';
+import * as authApi from '../auth/index.js';
 import { WalletClient } from './client.js';
 import type {
   CheckoutSession,
@@ -93,6 +94,15 @@ export function getWalletBaseUrl(deps: WalletDeps = {}): string {
 export function readWalletJwt(deps: WalletDeps = {}): string | undefined {
   const v = deps.readJwt?.();
   if (v) return v;
+  // Phase 6: prefer the auth session's access token. Only fall back to the
+  // legacy paste-token (`walletJwt`) when no auth session is present, so
+  // existing pre-Phase-6 installs don't break before they sign in.
+  try {
+    const authSession = authApi.getSession();
+    if (authSession?.access_token) return authSession.access_token;
+  } catch {
+    /* auth not initialised — fall through */
+  }
   try {
     const secrets = getSecrets() as Record<string, unknown>;
     const jwt = secrets.walletJwt;
@@ -127,7 +137,15 @@ export function clearWalletJwt(deps: WalletDeps = {}): void {
   patchSecrets({ walletJwt: undefined });
 }
 
-function getClient(deps: WalletDeps = {}): WalletClient {
+async function getClient(deps: WalletDeps = {}): Promise<WalletClient> {
+  // Phase 6: refresh the auth session in-place if it's near expiry. Best-
+  // effort — if refresh fails for transient reasons, fall through to the
+  // existing token (the wallet call may still succeed if expiry hasn't hit).
+  try {
+    await authApi.refreshIfNeeded();
+  } catch {
+    /* swallow — readWalletJwt below uses whatever's currently stored */
+  }
   const jwt = readWalletJwt(deps);
   if (!jwt) throw new WalletNotConnectedError();
   return new WalletClient({
@@ -138,7 +156,7 @@ function getClient(deps: WalletDeps = {}): WalletClient {
 }
 
 export async function getBalance(deps?: WalletDeps): Promise<WalletBalance> {
-  return getClient(deps).getBalance();
+  return (await getClient(deps)).getBalance();
 }
 
 export async function createCheckout(
@@ -150,21 +168,21 @@ export async function createCheckout(
   },
   deps?: WalletDeps,
 ): Promise<CheckoutSession> {
-  return getClient(deps).createCheckout(params);
+  return (await getClient(deps)).createCheckout(params);
 }
 
 export async function getOrderHistory(
   limit?: number,
   deps?: WalletDeps,
 ): Promise<{ orders: WalletOrder[] }> {
-  return getClient(deps).getOrderHistory(limit);
+  return (await getClient(deps)).getOrderHistory(limit);
 }
 
 export async function setSpendCap(
   monthly_cap_usd: number | null,
   deps?: WalletDeps,
 ): Promise<{ ok: true }> {
-  return getClient(deps).setSpendCap(monthly_cap_usd);
+  return (await getClient(deps)).setSpendCap(monthly_cap_usd);
 }
 
 /**

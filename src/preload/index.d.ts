@@ -455,6 +455,47 @@ interface HermesAPI {
   walletClearJwt: () => Promise<
     { ok: true } | { ok: false; error: string; status?: number }
   >;
+
+  // Auth (GoTrue at auth.xcity.one)
+  authGetSession: () => Promise<AuthSessionView>;
+  authSignIn: (
+    email: string,
+    password: string,
+  ) => Promise<AuthResult<{ session: AuthSessionView }>>;
+  authSignUp: (
+    email: string,
+    password: string,
+  ) => Promise<
+    AuthResult<
+      | { kind: "session"; session: AuthSessionView }
+      | { kind: "requires_verification"; email: string | null }
+    >
+  >;
+  authSignOut: () => Promise<AuthResult<Record<string, never>>>;
+  authRecoverPassword: (
+    email: string,
+  ) => Promise<AuthResult<Record<string, never>>>;
+  authRefresh: () => Promise<AuthResult<{ signed_in: boolean }>>;
+  authStartGoogleOAuth: () => Promise<AuthResult<Record<string, never>>>;
+  onAuthSessionChanged: (
+    callback: (view: AuthSessionView) => void,
+  ) => () => void;
+  onAuthOAuthCompleted: (
+    callback: (
+      result: { ok: true } | { ok: false; code?: string; error?: string },
+    ) => void,
+  ) => () => void;
+}
+
+type AuthResult<T> =
+  | ({ ok: true } & T)
+  | { ok: false; error: string; code?: string; status?: number };
+
+interface AuthSessionView {
+  signed_in: boolean;
+  email: string | null;
+  user_id: string | null;
+  expires_at: number | null;
 }
 
 type WalletResult<T> =

@@ -6,9 +6,11 @@ import Install from "./screens/Install/Install";
 import Setup from "./screens/Setup/Setup";
 import Layout from "./screens/Layout/Layout";
 import SplashScreen from "./screens/SplashScreen/SplashScreen";
+import AuthFlow, { type AuthMode } from "./screens/Auth/AuthFlow";
+import LoginPromptModal from "./components/LoginPromptModal";
 import { useI18n } from "./components/useI18n";
 
-type Screen = "splash" | "welcome" | "installing" | "setup" | "main";
+type Screen = "splash" | "welcome" | "installing" | "setup" | "main" | "auth";
 
 // Minimum time the splash stays visible so the brand animation plays
 // through. Tracks the splash logo fade-in duration in main.css.
@@ -17,8 +19,19 @@ const SPLASH_MIN_MS = 1300;
 function App(): React.JSX.Element {
   const { t } = useI18n();
   const [screen, setScreen] = useState<Screen>("splash");
+  const [authMode, setAuthMode] = useState<AuthMode>("signin");
+  const [previousScreen, setPreviousScreen] = useState<Screen>("main");
   const [installError, setInstallError] = useState<string | null>(null);
   const isMac = window.electron?.process?.platform === "darwin";
+
+  const goToAuth = useCallback((mode: AuthMode) => {
+    setAuthMode(mode);
+    setScreen((current) => {
+      // Remember where we came from so post-auth we can return.
+      if (current !== "auth") setPreviousScreen(current);
+      return "auth";
+    });
+  }, []);
 
   const runInstallCheck = useCallback(async () => {
     const startedAt = Date.now();
@@ -133,9 +146,24 @@ function App(): React.JSX.Element {
       case "setup":
         return <Setup onComplete={() => setScreen("main")} />;
       case "main":
-        return <Layout />;
+        return <Layout onSignInClick={() => goToAuth("signin")} />;
+      case "auth":
+        return (
+          <AuthFlow
+            initialMode={authMode}
+            onSignedIn={() => setScreen(previousScreen)}
+            onCancel={() => setScreen(previousScreen)}
+            cancelable
+            googleEnabled
+          />
+        );
     }
   }
+
+  // The launch-time login prompt only shows on the main screen — once the
+  // user is past Welcome / Setup, we surface it once per launch unless
+  // already signed in.
+  const showLoginPrompt = screen === "main";
 
   return (
     <ThemeProvider>
@@ -143,6 +171,7 @@ function App(): React.JSX.Element {
         <div className="app">
           {isMac && <div className="drag-region" />}
           <div className="app-content">{renderScreen()}</div>
+          {showLoginPrompt && <LoginPromptModal onChooseAuth={goToAuth} />}
         </div>
       </ErrorBoundary>
     </ThemeProvider>

@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTheme } from "../../components/ThemeProvider";
 import { SETTINGS_SECTIONS, PROVIDERS, THEME_OPTIONS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
-import { Download, Upload, FileText } from "lucide-react";
+import { Download, Upload, FileText, LogOut, UserCheck, UserX } from "lucide-react";
+import { useAuthSession } from "../../hooks/useAuthSession";
 
 // Read cached values from localStorage for instant display
 function getCachedVersion(): string | null {
@@ -109,12 +110,6 @@ function Settings({
   const [forceIpv4, setForceIpv4] = useState(false);
   const [httpProxy, setHttpProxy] = useState("");
   const [networkSaved, setNetworkSaved] = useState(false);
-
-  // Wallet connection
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletJwtInput, setWalletJwtInput] = useState("");
-  const [walletBusy, setWalletBusy] = useState(false);
-  const [walletStatusMsg, setWalletStatusMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Debug dump
   const [dumpOutput, setDumpOutput] = useState<string | null>(null);
@@ -348,52 +343,6 @@ function Settings({
     await window.hermesAPI.setConnectionConfig("local", "", "");
     setConnStatus(t("settings.switchedToLocal"));
     setTimeout(() => setConnStatus(null), 2000);
-  }
-
-  // Refresh wallet connection status when settings becomes visible.
-  useEffect(() => {
-    if (!visible) return;
-    let cancelled = false;
-    (async () => {
-      const connected = await window.hermesAPI.walletIsConnected();
-      if (!cancelled) setWalletConnected(connected);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [visible]);
-
-  async function handleWalletConnect(): Promise<void> {
-    const jwt = walletJwtInput.trim();
-    if (!jwt) {
-      setWalletStatusMsg({ ok: false, text: t("settings.walletJwtEmpty") });
-      return;
-    }
-    setWalletBusy(true);
-    setWalletStatusMsg(null);
-    const res = await window.hermesAPI.walletSetJwt(jwt);
-    setWalletBusy(false);
-    if (res.ok) {
-      setWalletConnected(true);
-      setWalletJwtInput("");
-      setWalletStatusMsg({ ok: true, text: t("settings.walletConnectedMsg") });
-      setTimeout(() => setWalletStatusMsg(null), 2500);
-    } else {
-      setWalletStatusMsg({ ok: false, text: res.error });
-    }
-  }
-
-  async function handleWalletDisconnect(): Promise<void> {
-    setWalletBusy(true);
-    const res = await window.hermesAPI.walletClearJwt();
-    setWalletBusy(false);
-    if (res.ok) {
-      setWalletConnected(false);
-      setWalletStatusMsg({ ok: true, text: t("settings.walletDisconnectedMsg") });
-      setTimeout(() => setWalletStatusMsg(null), 2500);
-    } else {
-      setWalletStatusMsg({ ok: false, text: res.error });
-    }
   }
 
   async function handleBackup(): Promise<void> {
@@ -1016,89 +965,7 @@ function Settings({
       </div>
       )}
 
-      <div className="settings-section">
-        <div className="settings-section-title">
-          {t("settings.walletSection")}
-          {walletConnected && (
-            <span
-              className="settings-saved"
-              style={{ marginLeft: 8, color: "var(--color-success, #22c55e)" }}
-            >
-              {t("settings.walletConnected")}
-            </span>
-          )}
-        </div>
-        <div className="settings-field">
-          <div className="settings-field-hint" style={{ marginBottom: 10 }}>
-            {t("settings.walletHint")}
-          </div>
-          {walletConnected ? (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button
-                className="btn btn-secondary"
-                onClick={handleWalletDisconnect}
-                disabled={walletBusy}
-              >
-                {t("settings.walletDisconnect")}
-              </button>
-              {walletStatusMsg && (
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: walletStatusMsg.ok
-                      ? "var(--color-success, #22c55e)"
-                      : "var(--color-danger, #dc2626)",
-                  }}
-                >
-                  {walletStatusMsg.text}
-                </span>
-              )}
-            </div>
-          ) : (
-            <>
-              <textarea
-                className="input"
-                value={walletJwtInput}
-                onChange={(e) => setWalletJwtInput(e.target.value)}
-                placeholder={t("settings.walletJwtPlaceholder")}
-                rows={3}
-                style={{ fontFamily: "monospace", fontSize: 12, width: "100%" }}
-                disabled={walletBusy}
-              />
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  marginTop: 8,
-                  alignItems: "center",
-                }}
-              >
-                <button
-                  className="btn btn-primary"
-                  onClick={handleWalletConnect}
-                  disabled={walletBusy || !walletJwtInput.trim()}
-                >
-                  {walletBusy
-                    ? t("settings.walletConnecting")
-                    : t("settings.walletConnect")}
-                </button>
-                {walletStatusMsg && (
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: walletStatusMsg.ok
-                        ? "var(--color-success, #22c55e)"
-                        : "var(--color-danger, #dc2626)",
-                    }}
-                  >
-                    {walletStatusMsg.text}
-                  </span>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+      <AuthSection />
 
       <div className="settings-section">
         <div className="settings-section-title">{t("settings.dataSection")}</div>
@@ -1244,6 +1111,76 @@ function Settings({
             ))}
           </div>
         ))}
+    </div>
+  );
+}
+
+/**
+ * Auth-driven session section. Replaces the Phase-5 paste-token UI now
+ * that proper sign-in / sign-out lives in the sidebar.
+ *
+ * - Signed in: shows email + plan + Sign-out
+ * - Anonymous: hint + pointer at the sidebar Sign-in button
+ */
+function AuthSection(): React.JSX.Element {
+  const { t } = useI18n();
+  const { session, loading } = useAuthSession();
+  const [busy, setBusy] = useState(false);
+
+  const onSignOut = useCallback(async () => {
+    setBusy(true);
+    await window.hermesAPI.authSignOut();
+    setBusy(false);
+  }, []);
+
+  return (
+    <div className="settings-section">
+      <div className="settings-section-title">
+        {t("settings.walletSection")}
+        {session.signed_in && (
+          <span
+            className="settings-saved"
+            style={{ marginLeft: 8, color: "var(--color-success, #22c55e)" }}
+          >
+            {t("settings.walletConnected")}
+          </span>
+        )}
+      </div>
+      <div className="settings-field">
+        {loading ? (
+          <div className="settings-field-hint">…</div>
+        ) : session.signed_in ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 14,
+              }}
+            >
+              <UserCheck size={16} style={{ color: "var(--color-success, #22c55e)" }} />
+              <span>{t("auth.menuSignedInAs", { email: session.email ?? "—" })}</span>
+            </div>
+            <button
+              className="btn btn-secondary"
+              onClick={onSignOut}
+              disabled={busy}
+              style={{ alignSelf: "flex-start" }}
+            >
+              <LogOut size={14} style={{ marginRight: 6 }} />
+              {t("auth.menuSignOut")}
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}
+          >
+            <UserX size={16} style={{ color: "var(--color-fg-muted, #888)" }} />
+            <span>{t("settings.walletHint")}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

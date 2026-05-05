@@ -665,7 +665,68 @@ const hermesAPI = {
   walletClearJwt: (): Promise<
     { ok: true } | { ok: false; error: string; status?: number }
   > => ipcRenderer.invoke("wallet-clear-jwt"),
+
+  // ── Auth (GoTrue at auth.xcity.one) ──────────────────────────────────
+  authGetSession: (): Promise<AuthSessionView> =>
+    ipcRenderer.invoke("auth-get-session"),
+  authSignIn: (
+    email: string,
+    password: string,
+  ): Promise<AuthResult<{ session: AuthSessionView }>> =>
+    ipcRenderer.invoke("auth-sign-in", email, password),
+  authSignUp: (
+    email: string,
+    password: string,
+  ): Promise<
+    AuthResult<
+      | { kind: "session"; session: AuthSessionView }
+      | { kind: "requires_verification"; email: string | null }
+    >
+  > => ipcRenderer.invoke("auth-sign-up", email, password),
+  authSignOut: (): Promise<AuthResult<Record<string, never>>> =>
+    ipcRenderer.invoke("auth-sign-out"),
+  authRecoverPassword: (
+    email: string,
+  ): Promise<AuthResult<Record<string, never>>> =>
+    ipcRenderer.invoke("auth-recover-password", email),
+  authRefresh: (): Promise<AuthResult<{ signed_in: boolean }>> =>
+    ipcRenderer.invoke("auth-refresh"),
+  authStartGoogleOAuth: (): Promise<AuthResult<Record<string, never>>> =>
+    ipcRenderer.invoke("auth-start-google-oauth"),
+  onAuthSessionChanged: (
+    callback: (view: AuthSessionView) => void,
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      view: AuthSessionView,
+    ): void => callback(view);
+    ipcRenderer.on("auth-session-changed", handler);
+    return () => ipcRenderer.removeListener("auth-session-changed", handler);
+  },
+  onAuthOAuthCompleted: (
+    callback: (
+      result: { ok: true } | { ok: false; code?: string; error?: string },
+    ) => void,
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      r: { ok: true } | { ok: false; code?: string; error?: string },
+    ): void => callback(r);
+    ipcRenderer.on("auth-oauth-completed", handler);
+    return () => ipcRenderer.removeListener("auth-oauth-completed", handler);
+  },
 };
+
+type AuthResult<T> =
+  | ({ ok: true } & T)
+  | { ok: false; error: string; code?: string; status?: number };
+
+interface AuthSessionView {
+  signed_in: boolean;
+  email: string | null;
+  user_id: string | null;
+  expires_at: number | null;
+}
 
 // ── Wallet types (kept inline for the preload bridge — full type module lives
 // in src/main/wallet/types.ts) ───────────────────────────────────────────────
