@@ -110,6 +110,12 @@ function Settings({
   const [httpProxy, setHttpProxy] = useState("");
   const [networkSaved, setNetworkSaved] = useState(false);
 
+  // Wallet connection
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletJwtInput, setWalletJwtInput] = useState("");
+  const [walletBusy, setWalletBusy] = useState(false);
+  const [walletStatusMsg, setWalletStatusMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   // Debug dump
   const [dumpOutput, setDumpOutput] = useState<string | null>(null);
   const [dumpRunning, setDumpRunning] = useState(false);
@@ -342,6 +348,52 @@ function Settings({
     await window.hermesAPI.setConnectionConfig("local", "", "");
     setConnStatus(t("settings.switchedToLocal"));
     setTimeout(() => setConnStatus(null), 2000);
+  }
+
+  // Refresh wallet connection status when settings becomes visible.
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    (async () => {
+      const connected = await window.hermesAPI.walletIsConnected();
+      if (!cancelled) setWalletConnected(connected);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
+  async function handleWalletConnect(): Promise<void> {
+    const jwt = walletJwtInput.trim();
+    if (!jwt) {
+      setWalletStatusMsg({ ok: false, text: t("settings.walletJwtEmpty") });
+      return;
+    }
+    setWalletBusy(true);
+    setWalletStatusMsg(null);
+    const res = await window.hermesAPI.walletSetJwt(jwt);
+    setWalletBusy(false);
+    if (res.ok) {
+      setWalletConnected(true);
+      setWalletJwtInput("");
+      setWalletStatusMsg({ ok: true, text: t("settings.walletConnectedMsg") });
+      setTimeout(() => setWalletStatusMsg(null), 2500);
+    } else {
+      setWalletStatusMsg({ ok: false, text: res.error });
+    }
+  }
+
+  async function handleWalletDisconnect(): Promise<void> {
+    setWalletBusy(true);
+    const res = await window.hermesAPI.walletClearJwt();
+    setWalletBusy(false);
+    if (res.ok) {
+      setWalletConnected(false);
+      setWalletStatusMsg({ ok: true, text: t("settings.walletDisconnectedMsg") });
+      setTimeout(() => setWalletStatusMsg(null), 2500);
+    } else {
+      setWalletStatusMsg({ ok: false, text: res.error });
+    }
   }
 
   async function handleBackup(): Promise<void> {
@@ -963,6 +1015,90 @@ function Settings({
         </div>
       </div>
       )}
+
+      <div className="settings-section">
+        <div className="settings-section-title">
+          {t("settings.walletSection")}
+          {walletConnected && (
+            <span
+              className="settings-saved"
+              style={{ marginLeft: 8, color: "var(--color-success, #22c55e)" }}
+            >
+              {t("settings.walletConnected")}
+            </span>
+          )}
+        </div>
+        <div className="settings-field">
+          <div className="settings-field-hint" style={{ marginBottom: 10 }}>
+            {t("settings.walletHint")}
+          </div>
+          {walletConnected ? (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                className="btn btn-secondary"
+                onClick={handleWalletDisconnect}
+                disabled={walletBusy}
+              >
+                {t("settings.walletDisconnect")}
+              </button>
+              {walletStatusMsg && (
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: walletStatusMsg.ok
+                      ? "var(--color-success, #22c55e)"
+                      : "var(--color-danger, #dc2626)",
+                  }}
+                >
+                  {walletStatusMsg.text}
+                </span>
+              )}
+            </div>
+          ) : (
+            <>
+              <textarea
+                className="input"
+                value={walletJwtInput}
+                onChange={(e) => setWalletJwtInput(e.target.value)}
+                placeholder={t("settings.walletJwtPlaceholder")}
+                rows={3}
+                style={{ fontFamily: "monospace", fontSize: 12, width: "100%" }}
+                disabled={walletBusy}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginTop: 8,
+                  alignItems: "center",
+                }}
+              >
+                <button
+                  className="btn btn-primary"
+                  onClick={handleWalletConnect}
+                  disabled={walletBusy || !walletJwtInput.trim()}
+                >
+                  {walletBusy
+                    ? t("settings.walletConnecting")
+                    : t("settings.walletConnect")}
+                </button>
+                {walletStatusMsg && (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: walletStatusMsg.ok
+                        ? "var(--color-success, #22c55e)"
+                        : "var(--color-danger, #dc2626)",
+                    }}
+                  >
+                    {walletStatusMsg.text}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       <div className="settings-section">
         <div className="settings-section-title">{t("settings.dataSection")}</div>

@@ -3,14 +3,19 @@
  *
  * Wraps WalletClient with config plumbing so IPC handlers can call simple
  * functions instead of constructing clients. Reads:
- *   - WALLET_API_URL  (env, fallback to env-config apiBaseUrl, fallback to https://wallet.xcity.one)
- *   - walletJwt       (from secrets store; user-provided)
+ *   - WALLET_API_URL  (env var, highest priority)
+ *   - walletApiUrl    (per-env yaml in config/env.<env>.yaml)
+ *   - hard default `https://wallet.xcity.one` ONLY when env=production
+ *     (any other env throws WalletConfigError so dev/staging never
+ *     silently route to live wallet — Codex P1 fix)
+ *   - walletJwt       (from secrets json; user-provided)
  *
- * Throws if no JWT is configured — surfacing a "connect your wallet"
- * prompt in the UI.
+ * setWalletJwt / clearWalletJwt persist to the secrets file so the
+ * Settings UI can drive connect / disconnect without manual file edits
+ * (Codex P1 fix).
  */
 
-import { getSecrets, getConfig } from '../config-manager.js';
+import { getSecrets, getConfig, getCurrentEnv, patchSecrets } from '../config-manager.js';
 import { WalletClient } from './client.js';
 import type {
   CheckoutSession,
@@ -29,28 +34,60 @@ export class WalletNotConnectedError extends Error {
   }
 }
 
+export class WalletConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'WalletConfigError';
+  }
+}
+
 export interface WalletDeps {
   /** Override config readers. Used by tests. */
   readJwt?: () => string | undefined;
   readBaseUrl?: () => string | undefined;
+  readEnv?: () => 'development' | 'staging' | 'production';
   /** Override fetch. Used by tests. */
   fetch?: typeof fetch;
+  /** Override secret writes. Used by tests. */
+  writeJwt?: (jwt: string | undefined) => void;
 }
 
+/**
+ * Resolve the wallet API base URL. Priority:
+ *   1. deps.readBaseUrl()    — for tests
+ *   2. WALLET_API_URL env    — per-deployment override
+ *   3. config/env.<env>.yaml `walletApiUrl`
+ *   4. `https://wallet.xcity.one` BUT ONLY when env=production
+ *
+ * In dev/staging, missing config = hard error. This prevents fresh installs
+ * with stale yaml configs from accidentally hitting production.
+ */
 export function getWalletBaseUrl(deps: WalletDeps = {}): string {
   const fromOverride = deps.readBaseUrl?.();
   if (fromOverride) return fromOverride;
+
   const fromEnv = process.env.WALLET_API_URL;
   if (fromEnv) return fromEnv;
+
+  let envName: 'development' | 'staging' | 'production' = 'development';
   try {
     const cfg = getConfig();
-    if ('walletApiUrl' in cfg && typeof (cfg as Record<string, unknown>).walletApiUrl === 'string') {
-      return (cfg as Record<string, unknown>).walletApiUrl as string;
+    const cfgRecord = cfg as Record<string, unknown>;
+    if (typeof cfgRecord.walletApiUrl === 'string' && cfgRecord.walletApiUrl) {
+      return cfgRecord.walletApiUrl;
     }
+    envName = (deps.readEnv?.() ?? getCurrentEnv()) as typeof envName;
   } catch {
-    /* config not yet initialized */
+    envName = deps.readEnv?.() ?? envName;
   }
-  return DEFAULT_WALLET_BASE;
+
+  if (envName === 'production') return DEFAULT_WALLET_BASE;
+
+  throw new WalletConfigError(
+    `walletApiUrl not configured for env=${envName}. ` +
+      `Set WALLET_API_URL env var, or add walletApiUrl to config/env.${envName}.yaml. ` +
+      `Refusing to silently route ${envName} traffic to ${DEFAULT_WALLET_BASE}.`,
+  );
 }
 
 export function readWalletJwt(deps: WalletDeps = {}): string | undefined {
@@ -63,6 +100,31 @@ export function readWalletJwt(deps: WalletDeps = {}): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Persist a wallet access token from the UI. Throws on obviously-bad input. */
+export function setWalletJwt(jwt: string, deps: WalletDeps = {}): void {
+  if (typeof jwt !== 'string') {
+    throw new WalletConfigError('walletJwt must be a string');
+  }
+  const trimmed = jwt.trim();
+  if (trimmed.length < 20) {
+    throw new WalletConfigError('walletJwt looks too short to be a valid token');
+  }
+  if (deps.writeJwt) {
+    deps.writeJwt(trimmed);
+    return;
+  }
+  patchSecrets({ walletJwt: trimmed });
+}
+
+/** Disconnect the wallet (delete the persisted JWT). */
+export function clearWalletJwt(deps: WalletDeps = {}): void {
+  if (deps.writeJwt) {
+    deps.writeJwt(undefined);
+    return;
+  }
+  patchSecrets({ walletJwt: undefined });
 }
 
 function getClient(deps: WalletDeps = {}): WalletClient {

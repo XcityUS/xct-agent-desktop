@@ -449,6 +449,12 @@ interface HermesAPI {
   walletOpenCheckout: (
     url: string,
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  walletSetJwt: (
+    jwt: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string; status?: number }>;
+  walletClearJwt: () => Promise<
+    { ok: true } | { ok: false; error: string; status?: number }
+  >;
 }
 
 type WalletResult<T> =

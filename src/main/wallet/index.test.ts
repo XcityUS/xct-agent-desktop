@@ -5,7 +5,10 @@ import {
   getOrderHistory,
   isConnected,
   setSpendCap,
+  setWalletJwt,
+  clearWalletJwt,
   WalletNotConnectedError,
+  WalletConfigError,
   getWalletBaseUrl,
 } from './index.js';
 
@@ -93,23 +96,118 @@ describe('wallet facade', () => {
     expect(out.ok).toBe(true);
   });
 
-  it('getWalletBaseUrl prefers override > env > default', () => {
+  it('getWalletBaseUrl prefers override > env > yaml > prod default', () => {
     const original = process.env.WALLET_API_URL;
     delete process.env.WALLET_API_URL;
     try {
+      // 1. override (test injection) wins over everything
       expect(
-        getWalletBaseUrl({ readBaseUrl: () => 'https://override' }),
+        getWalletBaseUrl({
+          readBaseUrl: () => 'https://override',
+          readEnv: () => 'production',
+        }),
       ).toBe('https://override');
 
+      // 2. env var wins over yaml + default
       process.env.WALLET_API_URL = 'https://env-url';
-      expect(getWalletBaseUrl({})).toBe('https://env-url');
-      // override still wins
+      expect(getWalletBaseUrl({ readEnv: () => 'production' })).toBe(
+        'https://env-url',
+      );
+      // override still wins over env var
       expect(
-        getWalletBaseUrl({ readBaseUrl: () => 'https://override' }),
+        getWalletBaseUrl({
+          readBaseUrl: () => 'https://override',
+          readEnv: () => 'production',
+        }),
       ).toBe('https://override');
     } finally {
       if (original === undefined) delete process.env.WALLET_API_URL;
       else process.env.WALLET_API_URL = original;
     }
+  });
+
+  it('getWalletBaseUrl falls back to wallet.xcity.one ONLY in production', () => {
+    const original = process.env.WALLET_API_URL;
+    delete process.env.WALLET_API_URL;
+    try {
+      expect(getWalletBaseUrl({ readEnv: () => 'production' })).toBe(
+        'https://wallet.xcity.one',
+      );
+    } finally {
+      if (original === undefined) delete process.env.WALLET_API_URL;
+      else process.env.WALLET_API_URL = original;
+    }
+  });
+
+  it('getWalletBaseUrl throws WalletConfigError in development when nothing configured', () => {
+    const original = process.env.WALLET_API_URL;
+    delete process.env.WALLET_API_URL;
+    try {
+      expect(() => getWalletBaseUrl({ readEnv: () => 'development' })).toThrow(
+        WalletConfigError,
+      );
+      // Error message must point operators at the right yaml file.
+      expect(() => getWalletBaseUrl({ readEnv: () => 'development' })).toThrow(
+        /env\.development\.yaml/,
+      );
+    } finally {
+      if (original === undefined) delete process.env.WALLET_API_URL;
+      else process.env.WALLET_API_URL = original;
+    }
+  });
+
+  it('getWalletBaseUrl throws WalletConfigError in staging when nothing configured', () => {
+    const original = process.env.WALLET_API_URL;
+    delete process.env.WALLET_API_URL;
+    try {
+      expect(() => getWalletBaseUrl({ readEnv: () => 'staging' })).toThrow(
+        /env\.staging\.yaml/,
+      );
+    } finally {
+      if (original === undefined) delete process.env.WALLET_API_URL;
+      else process.env.WALLET_API_URL = original;
+    }
+  });
+
+  it('setWalletJwt rejects empty string', () => {
+    expect(() => setWalletJwt('', { writeJwt: () => {} })).toThrow(
+      WalletConfigError,
+    );
+  });
+
+  it('setWalletJwt rejects too-short tokens', () => {
+    expect(() => setWalletJwt('short', { writeJwt: () => {} })).toThrow(
+      /too short/,
+    );
+  });
+
+  it('setWalletJwt persists trimmed jwt via writeJwt dep', () => {
+    const written: Array<string | undefined> = [];
+    setWalletJwt('  eyJ.fake.token-aaaaaaaaaaaaaaaa  ', {
+      writeJwt: (v) => written.push(v),
+    });
+    expect(written).toEqual(['eyJ.fake.token-aaaaaaaaaaaaaaaa']);
+  });
+
+  it('setWalletJwt rejects non-string input', () => {
+    expect(() =>
+      setWalletJwt(123 as unknown as string, { writeJwt: () => {} }),
+    ).toThrow(WalletConfigError);
+  });
+
+  it('clearWalletJwt persists undefined via writeJwt dep', () => {
+    const written: Array<string | undefined> = [];
+    clearWalletJwt({ writeJwt: (v) => written.push(v) });
+    expect(written).toEqual([undefined]);
+  });
+
+  it('setWalletJwt followed by isConnected (via dep stub) returns true', () => {
+    let stored: string | undefined;
+    setWalletJwt('eyJfake.long.enough.token.value', {
+      writeJwt: (v) => {
+        stored = v;
+      },
+    });
+    expect(isConnected({ readJwt: () => stored })).toBe(true);
   });
 });
