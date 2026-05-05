@@ -9,7 +9,7 @@
  * - Runtime environment switching
  */
 
-import { existsSync, readFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { z } from "zod";
 
@@ -135,9 +135,38 @@ export function getConfig(): EnvConfig {
 
 export function getSecrets(): SecretsConfig {
   if (!_secretsConfig) {
-    loadSecretsConfig();
+    _secretsConfig = loadSecretsConfig();
   }
   return _secretsConfig ?? {};
+}
+
+/**
+ * Merge the given keys into the secrets file on disk and refresh the
+ * in-memory cache. Pass `undefined` to delete a key. Used by the wallet
+ * connect/disconnect flow so the JWT can be persisted from the UI.
+ */
+export function patchSecrets(patch: Partial<SecretsConfig>): SecretsConfig {
+  const path = getSecretsPath(_currentEnv);
+  let existing: Record<string, unknown> = {};
+  if (existsSync(path)) {
+    try {
+      existing = JSON.parse(readFileSync(path, "utf-8"));
+    } catch {
+      existing = {};
+    }
+  } else {
+    mkdirSync(dirname(path), { recursive: true });
+  }
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) {
+      delete existing[k];
+    } else {
+      existing[k] = v;
+    }
+  }
+  writeFileSync(path, JSON.stringify(existing, null, 2), "utf-8");
+  _secretsConfig = loadSecretsConfig(_currentEnv);
+  return _secretsConfig;
 }
 
 export function getCurrentEnv(): "development" | "staging" | "production" {

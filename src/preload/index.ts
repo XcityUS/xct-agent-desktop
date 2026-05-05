@@ -658,6 +658,13 @@ const hermesAPI = {
     url: string,
   ): Promise<{ ok: true } | { ok: false; error: string }> =>
     ipcRenderer.invoke("wallet-open-checkout", url),
+  walletSetJwt: (
+    jwt: string,
+  ): Promise<{ ok: true } | { ok: false; error: string; status?: number }> =>
+    ipcRenderer.invoke("wallet-set-jwt", jwt),
+  walletClearJwt: (): Promise<
+    { ok: true } | { ok: false; error: string; status?: number }
+  > => ipcRenderer.invoke("wallet-clear-jwt"),
 };
 
 // ── Wallet types (kept inline for the preload bridge — full type module lives

@@ -727,6 +727,22 @@ function setupIPC(): void {
     await shell.openExternal(url);
     return { ok: true as const };
   });
+  ipcMain.handle("wallet-set-jwt", async (_event, jwt: string) => {
+    try {
+      walletApi.setWalletJwt(jwt);
+      return { ok: true as const };
+    } catch (e) {
+      return mapWalletError(e);
+    }
+  });
+  ipcMain.handle("wallet-clear-jwt", async () => {
+    try {
+      walletApi.clearWalletJwt();
+      return { ok: true as const };
+    } catch (e) {
+      return mapWalletError(e);
+    }
+  });
 }
 
 function mapWalletError(
@@ -734,6 +750,9 @@ function mapWalletError(
 ): { ok: false; error: string; status?: number } {
   if (e instanceof walletApi.WalletNotConnectedError) {
     return { ok: false, error: "wallet_not_connected" };
+  }
+  if (e instanceof walletApi.WalletConfigError) {
+    return { ok: false, error: e.message };
   }
   if (e instanceof walletApi.WalletApiError) {
     return { ok: false, error: e.message, status: e.status };
