@@ -26,6 +26,7 @@ import soulEn from "./locales/en/soul";
 import memoryEn from "./locales/en/memory";
 import installEn from "./locales/en/install";
 import constantsEn from "./locales/en/constants";
+import authEn from "./locales/en/auth";
 import commonEs from "./locales/es/common";
 import navigationEs from "./locales/es/navigation";
 import welcomeEs from "./locales/es/welcome";
@@ -46,6 +47,7 @@ import soulEs from "./locales/es/soul";
 import memoryEs from "./locales/es/memory";
 import installEs from "./locales/es/install";
 import constantsEs from "./locales/es/constants";
+import authEs from "./locales/es/auth";
 import commonZh from "./locales/zh-CN/common";
 import navigationZh from "./locales/zh-CN/navigation";
 import welcomeZh from "./locales/zh-CN/welcome";
@@ -66,6 +68,7 @@ import soulZh from "./locales/zh-CN/soul";
 import memoryZh from "./locales/zh-CN/memory";
 import installZh from "./locales/zh-CN/install";
 import constantsZh from "./locales/zh-CN/constants";
+import authZh from "./locales/zh-CN/auth";
 
 export const resources = {
   en: {
@@ -90,6 +93,7 @@ export const resources = {
       memory: memoryEn,
       install: installEn,
       constants: constantsEn,
+      auth: authEn,
     },
   },
   es: {
@@ -114,6 +118,7 @@ export const resources = {
       memory: memoryEs,
       install: installEs,
       constants: constantsEs,
+      auth: authEs,
     },
   },
   "zh-CN": {
@@ -138,6 +143,7 @@ export const resources = {
       memory: memoryZh,
       install: installZh,
       constants: constantsZh,
+      auth: authZh,
     },
   },
 } satisfies Resource;

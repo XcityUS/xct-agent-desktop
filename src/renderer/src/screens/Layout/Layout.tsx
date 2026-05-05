@@ -36,6 +36,8 @@ import {
 } from "../../assets/icons";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
+import UserMenu from "../../components/UserMenu";
+import BalanceBadge from "../../components/BalanceBadge";
 
 type View =
   | "chat"
@@ -72,7 +74,12 @@ const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
   { view: "settings", icon: SettingsIcon, labelKey: "navigation.settings" },
 ];
 
-function Layout(): React.JSX.Element {
+interface LayoutProps {
+  /** Called when an anonymous user clicks "Sign in" in the user menu. */
+  onSignInClick?: () => void;
+}
+
+function Layout({ onSignInClick }: LayoutProps = {}): React.JSX.Element {
   const { t } = useI18n();
   const [view, setView] = useState<View>("chat");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -169,6 +176,7 @@ function Layout(): React.JSX.Element {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <img src={hermeslogo} height={30} alt="" />
+          <BalanceBadge onClick={() => setView("recharge")} />
         </div>
 
         <nav className="sidebar-nav">
@@ -186,6 +194,8 @@ function Layout(): React.JSX.Element {
             </button>
           ))}
         </nav>
+
+        <UserMenu onSignInClick={() => onSignInClick?.()} />
 
         <div className="sidebar-footer">
           {updateState && (
