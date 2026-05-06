@@ -1,25 +1,42 @@
-// Renderer-side client for the xcity-home → tokenhub flow.
+// ─────────────────────────────────────────────────────────────────────────────
+// ⚠️  DO NOT WIRE THIS INTO THE RENDERER YET — DESKTOP USES A DIFFERENT FLOW
+// ─────────────────────────────────────────────────────────────────────────────
 //
-// The renderer can fetch directly (Electron's renderer is just a Chromium
-// process); we don't proxy through the main process. The user's xcity-home
-// Supabase session cookie is forwarded with `credentials: "include"` so
-// `https://www.xcity.one/api/me/litellm-key` returns their LiteLLM bearer.
+// This module was authored for the browser sub-products on `*.xcity.one`
+// (xct-chat, xct-flow, etc.) and reused here as a starting template. It
+// CANNOT WORK in this Electron renderer as-is, because:
 //
-// Per repo CLAUDE.md / project rules, the bearer is cached in
-// `sessionStorage` only — never `localStorage` — so it does not survive
-// app restart and is unreachable from any persistent surface.
+//   1. Electron renderer's origin is typically `file://...` (or a custom
+//      app:// scheme). It is NOT a `*.xcity.one` origin, so the xcity-home
+//      session cookie (`xct_session`, host-only on www.xcity.one) is never
+//      attached on `fetch(..., { credentials: "include" })`.
+//   2. Even if we hacked the origin (webSecurity: false / proxy through a
+//      localhost dev server), the model leaks the user's bearer to renderer
+//      memory with no consent moment, no per-app revoke, and no audit log.
 //
-// Example wiring (uncomment in a renderer component, e.g. in
-// `screens/Models/Models.tsx`, to populate a model picker from the user's
-// tokenhub-allowed list):
+// The planned, secure desktop-side approach is OAuth 2.0 Authorization Code
+// with PKCE:
 //
-//   import { listAllowedModels } from "@renderer/lib/litellm-client";
+//   1. Renderer calls into main via IPC: "I need a bearer."
+//   2. Main calls `shell.openExternal("https://www.xcity.one/oauth/authorize
+//      ?client_id=xct-agent-desktop&redirect_uri=xct-agent-desktop://auth/callback
+//      &code_challenge=<S256(verifier)>&state=<random>")`
+//      → user's system browser shows the *real* xcity.one login + consent UI.
+//   3. xcity.one redirects to `xct-agent-desktop://auth/callback?code=...`.
+//      Main process receives it via the `app.setAsDefaultProtocolClient` hook,
+//      exchanges code+verifier at `POST /api/oauth/token`, gets back a
+//      LiteLLM bearer + refresh token.
+//   4. Main encrypts the tokens with `safeStorage.encryptString()` (OS
+//      keychain) and serves them to the renderer via IPC on demand.
+//   5. xcity.one exposes a settings page where the user can revoke the
+//      `xct-agent-desktop` grant — that flow is what this module loses.
 //
-//   useEffect(() => {
-//     listAllowedModels()
-//       .then((ids) => setRemoteModelIds(ids))
-//       .catch((err) => console.error("tokenhub model list failed:", err));
-//   }, []);
+// Until that flow lands, this file is a documentation stub. Do not import
+// `getLiteLlmKey()` / `listAllowedModels()` / `callChatCompletion()` from
+// any renderer component — the calls will throw or silently fail.
+//
+// Tracked separately under Xcity OAuth-flow task (TBD).
+// ─────────────────────────────────────────────────────────────────────────────
 
 const LITELLM_BASE = "https://tokenhub.xcity.one";
 const KEY_ENDPOINT = "https://www.xcity.one/api/me/litellm-key";
@@ -65,13 +82,10 @@ function removeFromSessionStorage(): void {
 /**
  * Resolve the current user's LiteLLM bearer.
  *
- * Returns a cached key when one is present and unexpired; otherwise hits
- * `https://www.xcity.one/api/me/litellm-key` with `credentials: "include"`
- * so the browser forwards the xcity-home Supabase session cookie.
- *
- * Throws if xcity-home returns a non-2xx (typically because the user is
- * not signed in to xcity.one). Callers should redirect to xcity-home login
- * on failure.
+ * @deprecated Does not work in Electron renderer (file:// origin cannot
+ * carry the xcity-home session cookie). Will be replaced by an IPC call
+ * to main process that exposes a token obtained via OAuth 2.0 + PKCE.
+ * See the file-level comment block above.
  */
 export async function getLiteLlmKey(): Promise<string> {
   if (cached && Date.now() < cached.expires) return cached.key;
@@ -114,8 +128,8 @@ export function clearLiteLlmKey(): void {
 /**
  * List the model IDs the current user is allowed to invoke through tokenhub.
  *
- * Calls `GET https://tokenhub.xcity.one/v1/models` with the user's bearer.
- * The returned IDs match LiteLLM's `models[]` whitelist on the user's key.
+ * @deprecated See `getLiteLlmKey` — depends on a flow that does not work
+ * in Electron renderer.
  */
 export async function listAllowedModels(): Promise<string[]> {
   const key = await getLiteLlmKey();
@@ -132,9 +146,8 @@ export async function listAllowedModels(): Promise<string[]> {
 /**
  * Forward a chat-completion payload to tokenhub.
  *
- * Retries exactly once on a 401 — that almost always means the cached key
- * was rotated server-side (Stripe webhook → `rotateKeyForUser`). The retry
- * fetches a fresh key first, then re-issues the request.
+ * @deprecated See `getLiteLlmKey` — depends on a flow that does not work
+ * in Electron renderer.
  */
 export async function callChatCompletion(
   payload: Record<string, unknown>,
