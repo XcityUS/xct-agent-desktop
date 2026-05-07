@@ -478,6 +478,13 @@ interface HermesAPI {
   authRefresh: () => Promise<AuthResult<{ signed_in: boolean }>>;
   authStartGoogleOAuth: () => Promise<AuthResult<Record<string, never>>>;
   /**
+   * Open the system browser to auth.xcity.one's OIDC authorize endpoint.
+   * After the user signs in / consents on the Xcity-branded page, the
+   * callback comes back via the `xct-agent://` protocol handler and is
+   * routed to `handleXcityCallback` (token exchange + session save).
+   */
+  authStartXcityOAuth: () => Promise<AuthResult<Record<string, never>>>;
+  /**
    * Returns the user's xcity-auth access token for use as a tokenhub
    * bearer. The wallet hook stamps `plan`, `entitlements`, `wallet_id`,
    * `rate_limits` claims into every issued token, so this is the same

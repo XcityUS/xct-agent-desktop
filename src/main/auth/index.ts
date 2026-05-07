@@ -15,11 +15,14 @@ import { getConfig } from '../config-manager.js';
 import { AuthClient } from './client.js';
 import {
   buildAuthorizeUrl,
+  buildXcityAuthorizeUrl,
   CALLBACK_URL,
   CUSTOM_PROTOCOL,
   deriveCodeChallenge,
   parseCallbackUrl,
+  parseXcityCallback,
   PendingOAuthStore,
+  XCITY_OAUTH_CLIENT_ID,
 } from './oauth.js';
 import {
   clearSession as clearStored,
@@ -302,6 +305,91 @@ export async function handleOAuthCallback(
     refresh_token: parsed.refresh_token,
     expires_at: expiresAt,
     expires_in: parsed.expires_in ?? 3600,
+    token_type: 'bearer',
+    user,
+  };
+  saveSession(session, deps);
+  emitSessionChanged(deps);
+  return projectView(session);
+}
+
+/**
+ * Build the OIDC-server authorize URL on auth.xcity.one (the "Sign in
+ * with Xcity" button). User logs in / consents on the canonical
+ * Xcity-branded page, then the deep-link callback delivers an auth code.
+ *
+ * Distinct from `startOAuth('google')` — that one federates Google
+ * through GoTrue's `/authorize?provider=google` and returns tokens in
+ * the URL fragment. This one is a real OIDC client_credentials flow
+ * with a code exchange.
+ */
+export function startXcityOAuth(deps: AuthDeps = {}): { url: string } {
+  const baseUrl = resolveBaseUrl(deps);
+  const entry = getPending(deps).start('xcity');
+  const url = buildXcityAuthorizeUrl({
+    authApiUrl: baseUrl,
+    clientId: XCITY_OAUTH_CLIENT_ID,
+    state: entry.state,
+    code_challenge: deriveCodeChallenge(entry.code_verifier),
+    redirect_uri: CALLBACK_URL,
+  });
+  return { url };
+}
+
+/**
+ * Handle the OIDC-server callback. Exchanges `?code=…` for tokens at
+ * `/oauth/token`, then fetches the user via `getUser()` (the access
+ * token already carries plan/entitlements claims via the wallet hook).
+ */
+export async function handleXcityCallback(
+  rawUrl: string,
+  deps: AuthDeps = {},
+): Promise<SessionView> {
+  const parsed = parseXcityCallback(rawUrl);
+  if (parsed.error) {
+    throw new AuthError(
+      parsed.error === 'access_denied' ? 'invalid_credentials' : 'unknown',
+      0,
+      parsed.error_description || parsed.error,
+    );
+  }
+  if (!parsed.state || !parsed.code) {
+    throw new AuthError(
+      'oauth_state_mismatch',
+      0,
+      'callback missing state or code',
+    );
+  }
+  const entry = getPending(deps).take(parsed.state);
+  if (!entry) {
+    throw new AuthError(
+      'oauth_state_expired',
+      0,
+      'OAuth state expired or unknown — start over',
+    );
+  }
+  if (entry.flow !== 'xcity') {
+    throw new AuthError(
+      'oauth_state_mismatch',
+      0,
+      `state belongs to a different flow (${entry.flow})`,
+    );
+  }
+  const tokens = await getClient(deps).exchangeOidcCode({
+    code: parsed.code,
+    code_verifier: entry.code_verifier,
+    client_id: XCITY_OAUTH_CLIENT_ID,
+    redirect_uri: CALLBACK_URL,
+  });
+  const user = await getClient(deps).getUser(tokens.access_token);
+  const expiresAt =
+    tokens.expires_at ??
+    Math.floor(Date.now() / 1000) + (tokens.expires_in ?? 3600);
+  const session: AuthSession = {
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expires_at: expiresAt,
+    expires_in: tokens.expires_in ?? 3600,
     token_type: 'bearer',
     user,
   };

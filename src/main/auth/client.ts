@@ -111,6 +111,86 @@ export class AuthClient {
     return this.request<AuthUser>('GET', '/user', undefined, accessToken);
   }
 
+  /**
+   * OIDC Authorization Code + PKCE token exchange. Public-client flavor —
+   * no client_secret; PKCE proves the caller is the same one that started
+   * the authorize step. Returns the raw token response; caller is
+   * responsible for fetching the user via `getUser(access_token)`.
+   *
+   * Endpoint: `POST /oauth/token` with `application/x-www-form-urlencoded`
+   * (per the OIDC spec; GoTrue does NOT accept JSON here).
+   */
+  async exchangeOidcCode(params: {
+    code: string;
+    code_verifier: string;
+    client_id: string;
+    redirect_uri: string;
+  }): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expires_at?: number;
+    expires_in: number;
+    token_type: 'bearer';
+    id_token?: string;
+  }> {
+    const form = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: params.code,
+      code_verifier: params.code_verifier,
+      client_id: params.client_id,
+      redirect_uri: params.redirect_uri,
+    });
+    let res: Response;
+    try {
+      res = await this._fetch(`${this.baseUrl}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form.toString(),
+      });
+    } catch (e) {
+      throw new AuthError(
+        'network_error',
+        0,
+        'POST /oauth/token: network error',
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+    if (res.ok) {
+      const text = await res.text();
+      try {
+        return JSON.parse(text) as {
+          access_token: string;
+          refresh_token: string;
+          expires_at?: number;
+          expires_in: number;
+          token_type: 'bearer';
+          id_token?: string;
+        };
+      } catch {
+        throw new AuthError(
+          'unknown',
+          200,
+          '/oauth/token: response was not JSON',
+          text.slice(0, 200),
+        );
+      }
+    }
+    let errBody: Record<string, unknown> = {};
+    try {
+      errBody = (await res.json()) as Record<string, unknown>;
+    } catch {
+      /* leave empty */
+    }
+    const code = mapErrorCode(res.status, errBody);
+    const message =
+      typeof errBody.error_description === 'string'
+        ? (errBody.error_description as string)
+        : typeof errBody.error === 'string'
+          ? (errBody.error as string)
+          : `/oauth/token failed: ${res.status}`;
+    throw new AuthError(code, res.status, message, errBody);
+  }
+
   private async request<T>(
     method: 'GET' | 'POST',
     path: string,

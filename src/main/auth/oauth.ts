@@ -16,13 +16,32 @@ import { createHash, randomBytes } from 'crypto';
 export const CUSTOM_PROTOCOL = 'xct-agent';
 export const CALLBACK_URL = `${CUSTOM_PROTOCOL}://auth/callback`;
 
+/**
+ * Public OAuth client_id registered on auth.xcity.one for this app. Public
+ * clients embed their client_id; PKCE provides the security guarantee. Set
+ * `XCITY_OAUTH_CLIENT_ID` env to override (e.g. for a separate staging
+ * GoTrue with its own client registration).
+ */
+export const XCITY_OAUTH_CLIENT_ID =
+  process.env.XCITY_OAUTH_CLIENT_ID ??
+  '72026ea8-7da1-4868-82ed-a6ab3cd354c8';
+
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export type OAuthFlow = 'google' | 'xcity';
 
 export interface PendingOAuth {
   state: string;
   code_verifier: string;
   expires_at: number; // ms
-  provider: 'google';
+  /**
+   * Which return shape to expect on the callback:
+   *  - 'google' → GoTrue's social-login flow puts tokens in the URL
+   *    fragment (`#access_token=...&refresh_token=...`).
+   *  - 'xcity'  → OIDC server flow puts a code in the query
+   *    (`?code=...&state=...`); main exchanges it at `/oauth/token`.
+   */
+  flow: OAuthFlow;
 }
 
 export function generateCodeVerifier(): string {
@@ -57,12 +76,45 @@ export function buildAuthorizeUrl(params: {
   return u.toString();
 }
 
+/**
+ * Build the OIDC-server authorize URL on auth.xcity.one. Distinct from
+ * `buildAuthorizeUrl` (which targets GoTrue's social-login `/authorize`):
+ * this hits `/oauth/authorize` and returns a `?code=` to the redirect_uri
+ * after the user logs in / consents on the auth.xcity.one page.
+ */
+export function buildXcityAuthorizeUrl(params: {
+  authApiUrl: string;
+  clientId: string;
+  state: string;
+  code_challenge: string;
+  redirect_uri?: string;
+  scope?: string;
+}): string {
+  const u = new URL('/oauth/authorize', params.authApiUrl.replace(/\/+$/, ''));
+  u.searchParams.set('response_type', 'code');
+  u.searchParams.set('client_id', params.clientId);
+  u.searchParams.set('redirect_uri', params.redirect_uri ?? CALLBACK_URL);
+  u.searchParams.set('scope', params.scope ?? 'openid profile email');
+  u.searchParams.set('state', params.state);
+  u.searchParams.set('code_challenge', params.code_challenge);
+  u.searchParams.set('code_challenge_method', 'S256');
+  return u.toString();
+}
+
 export interface ParsedCallback {
   state: string | null;
   access_token: string | null;
   refresh_token: string | null;
   expires_at: number | null;
   expires_in: number | null;
+  error: string | null;
+  error_description: string | null;
+}
+
+export interface ParsedXcityCallback {
+  state: string | null;
+  /** OIDC authorization code returned by /oauth/authorize. */
+  code: string | null;
   error: string | null;
   error_description: string | null;
 }
@@ -101,6 +153,21 @@ export function parseCallbackUrl(rawUrl: string): ParsedCallback {
 }
 
 /**
+ * Parse an OIDC-server callback (xcity flow). Code + state are in the
+ * query; error is also in the query (oauth2 spec).
+ */
+export function parseXcityCallback(rawUrl: string): ParsedXcityCallback {
+  const url = new URL(rawUrl);
+  const q = url.searchParams;
+  return {
+    state: q.get('state'),
+    code: q.get('code'),
+    error: q.get('error'),
+    error_description: q.get('error_description'),
+  };
+}
+
+/**
  * In-memory pending-OAuth map. Self-pruning on read; capped at 5 entries.
  * Single-process Electron — no need for shared storage.
  */
@@ -114,14 +181,14 @@ export class PendingOAuthStore {
     this.maxSize = opts.maxSize ?? 5;
   }
 
-  start(provider: 'google'): PendingOAuth {
+  start(flow: OAuthFlow): PendingOAuth {
     const code_verifier = generateCodeVerifier();
     const state = generateState();
     const entry: PendingOAuth = {
       state,
       code_verifier,
       expires_at: this.nowFn() + STATE_TTL_MS,
-      provider,
+      flow,
     };
     this.prune();
     if (this.entries.size >= this.maxSize) {

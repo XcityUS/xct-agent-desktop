@@ -15,6 +15,7 @@ interface AuthAPI {
   authSignUp: ReturnType<typeof vi.fn>;
   authRecoverPassword: ReturnType<typeof vi.fn>;
   authStartGoogleOAuth: ReturnType<typeof vi.fn>;
+  authStartXcityOAuth: ReturnType<typeof vi.fn>;
   getLocale: ReturnType<typeof vi.fn>;
   setLocale: ReturnType<typeof vi.fn>;
 }
@@ -35,6 +36,7 @@ beforeEach(() => {
     authSignUp: vi.fn(async () => ({ ok: true, kind: "session", session: {} })),
     authRecoverPassword: vi.fn(async () => ({ ok: true })),
     authStartGoogleOAuth: vi.fn(async () => ({ ok: true })),
+    authStartXcityOAuth: vi.fn(async () => ({ ok: true })),
     getLocale: vi.fn(async () => DEFAULT_ACTIVE_LOCALE),
     setLocale: vi.fn(async () => DEFAULT_ACTIVE_LOCALE),
   };
@@ -55,7 +57,7 @@ describe("AuthFlow — sign in", () => {
     fireEvent.change(screen.getByPlaceholderText(/password/i), {
       target: { value: "pw12345678" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
     await waitFor(() => expect(api.authSignIn).toHaveBeenCalledWith("e@x.com", "pw12345678"));
     await waitFor(() => expect(onSignedIn).toHaveBeenCalled());
   });
@@ -69,7 +71,7 @@ describe("AuthFlow — sign in", () => {
     await render(<AuthFlow onSignedIn={() => {}} />);
     fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "e@x" } });
     fireEvent.change(screen.getByPlaceholderText(/password/i), { target: { value: "wrong" } });
-    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
     await waitFor(() =>
       expect(screen.getByText(/invalid email or password/i)).toBeInTheDocument(),
     );
@@ -77,7 +79,7 @@ describe("AuthFlow — sign in", () => {
 
   it("rejects empty email locally without IPC call", async () => {
     await render(<AuthFlow onSignedIn={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
     await waitFor(() =>
       expect(screen.getByText(/email is required/i)).toBeInTheDocument(),
     );
@@ -87,6 +89,16 @@ describe("AuthFlow — sign in", () => {
   it("hides Google button when googleEnabled=false", async () => {
     await render(<AuthFlow onSignedIn={() => {}} googleEnabled={false} />);
     expect(screen.queryByText(/sign in with google/i)).toBeNull();
+  });
+
+  it("shows 'Sign in with Xcity' by default and dispatches IPC on click", async () => {
+    await render(<AuthFlow onSignedIn={() => {}} />);
+    const btn = screen.getByRole("button", { name: /sign in with xcity/i });
+    expect(btn).toBeInTheDocument();
+    fireEvent.click(btn);
+    await waitFor(() =>
+      expect(api.authStartXcityOAuth).toHaveBeenCalledTimes(1),
+    );
   });
 
   it("shows Google button when googleEnabled=true", async () => {

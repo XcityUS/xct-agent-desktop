@@ -7,6 +7,8 @@ export default {
   signInLoading: "登录中…",
   signInGoogle: "使用 Google 登录",
   signInGoogleLoading: "正在打开浏览器…",
+  signInXcity: "使用 Xcity 登录",
+  signInXcityLoading: "正在打开浏览器…",
   signInForgot: "忘记密码？",
   signInNoAccount: "还没有账号？",
   signInCreateAccount: "立即创建",

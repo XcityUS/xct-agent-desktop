@@ -813,6 +813,15 @@ function setupIPC(): void {
       return mapAuthError(e);
     }
   });
+  ipcMain.handle("auth-start-xcity-oauth", async () => {
+    try {
+      const { url } = authApi.startXcityOAuth();
+      await shell.openExternal(url);
+      return { ok: true as const };
+    } catch (e) {
+      return mapAuthError(e);
+    }
+  });
 
   // Bearer for tokenhub.xcity.one. Returned to renderer so the chat layer
   // can call /v1/* directly with the user's plan-scoped token (the wallet
@@ -1067,8 +1076,22 @@ app.on("open-url", (event, url) => {
 });
 
 function handleAuthDeepLink(url: string): void {
-  authApi
-    .handleOAuthCallback(url)
+  // Two flows land at the same `xct-agent://auth/callback` URL:
+  //   - Google-via-GoTrue → tokens in fragment   (#access_token=…)
+  //   - Xcity OIDC server → code in query        (?code=…)
+  // Pick the right handler by what the URL carries.
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    parsed = new URL(`${authApi.CUSTOM_PROTOCOL}://auth/callback`);
+  }
+  const hasCode = parsed.searchParams.has("code");
+  const handler = hasCode
+    ? authApi.handleXcityCallback
+    : authApi.handleOAuthCallback;
+
+  handler(url)
     .then(() => {
       const win = BrowserWindow.getAllWindows()[0];
       if (win) {

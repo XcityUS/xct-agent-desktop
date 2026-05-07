@@ -12,6 +12,12 @@ interface SignInScreenProps {
   cancelable?: boolean;
   onCancel?: () => void;
   googleEnabled?: boolean;
+  /**
+   * Show the "Sign in with Xcity" button (OIDC server flow against
+   * auth.xcity.one). Defaults true — this is the recommended UX for
+   * production sign-ins.
+   */
+  xcityEnabled?: boolean;
 }
 
 export default function SignInScreen({
@@ -21,11 +27,14 @@ export default function SignInScreen({
   cancelable = false,
   onCancel,
   googleEnabled = false,
+  xcityEnabled = true,
 }: SignInScreenProps): React.JSX.Element {
   const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState<null | "password" | "google">(null);
+  const [busy, setBusy] = useState<null | "password" | "google" | "xcity">(
+    null,
+  );
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
   const onSubmit = useCallback(
@@ -62,6 +71,17 @@ export default function SignInScreen({
     }
     // On success, the deep-link callback will trigger session-changed and
     // the parent will redirect; keep busy=true until then.
+  }, []);
+
+  const onXcity = useCallback(async () => {
+    setBusy("xcity");
+    setErrorKey(null);
+    const r = await window.hermesAPI.authStartXcityOAuth();
+    if (!r.ok) {
+      setBusy(null);
+      setErrorKey(authErrorKey(r.code));
+    }
+    // Same pattern as Google: success completes via deep-link callback.
   }, []);
 
   return (
@@ -114,6 +134,21 @@ export default function SignInScreen({
             t("auth.signInSubmit")
           )}
         </button>
+
+        {xcityEnabled && (
+          <button
+            type="button"
+            className="btn btn-secondary auth-xcity"
+            onClick={onXcity}
+            disabled={busy !== null}
+          >
+            {busy === "xcity" ? (
+              <><Loader2 size={14} className="spin" /> {t("auth.signInXcityLoading")}</>
+            ) : (
+              t("auth.signInXcity")
+            )}
+          </button>
+        )}
 
         {googleEnabled && (
           <button

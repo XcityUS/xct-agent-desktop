@@ -5,6 +5,7 @@ import {
   getSession,
   getSessionView,
   handleOAuthCallback,
+  handleXcityCallback,
   isConfigured,
   on,
   recoverPassword,
@@ -13,6 +14,7 @@ import {
   signOut,
   signUp,
   startOAuth,
+  startXcityOAuth,
 } from './index.js';
 import { AuthError } from './types.js';
 import { PendingOAuthStore } from './oauth.js';
@@ -39,6 +41,40 @@ class FakeClient {
   refreshImpl = vi.fn(async (_r: string): Promise<AuthSession> =>
     makeSession({ access_token: 'fresh', refresh_token: 'fresh_ref' }),
   );
+  exchangeOidcCodeImpl = vi.fn(
+    async (_p: {
+      code: string;
+      code_verifier: string;
+      client_id: string;
+      redirect_uri: string;
+    }): Promise<{
+      access_token: string;
+      refresh_token: string;
+      expires_at?: number;
+      expires_in: number;
+      token_type: 'bearer';
+    }> => ({
+      access_token: 'oidc_acc',
+      refresh_token: 'oidc_ref',
+      expires_at: 1_700_000_000,
+      expires_in: 3600,
+      token_type: 'bearer',
+    }),
+  );
+  exchangeOidcCode(p: {
+    code: string;
+    code_verifier: string;
+    client_id: string;
+    redirect_uri: string;
+  }): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expires_at?: number;
+    expires_in: number;
+    token_type: 'bearer';
+  }> {
+    return this.exchangeOidcCodeImpl(p);
+  }
   signOutImpl = vi.fn(async (_t: string): Promise<void> => undefined);
   recoverImpl = vi.fn(async (_e: string): Promise<void> => undefined);
   getUserImpl = vi.fn(async (_t: string) => ({ id: 'user_1', email: 'e@x.com' }));
@@ -429,6 +465,81 @@ describe('auth facade', () => {
     expect(fake.refreshImpl).toHaveBeenCalledWith('old_ref');
     expect(result).toMatchObject({ access_token: 'fresh' });
     expect(store.userAccessToken).toBe('fresh');
+  });
+
+  it('startXcityOAuth builds /oauth/authorize URL + records pending state', () => {
+    const pending = new PendingOAuthStore();
+    const { url } = startXcityOAuth({
+      readBaseUrl: () => 'https://auth.xcity.one',
+      pending,
+    });
+    const u = new URL(url);
+    expect(u.pathname).toBe('/oauth/authorize');
+    expect(u.searchParams.get('response_type')).toBe('code');
+    expect(u.searchParams.get('client_id')).toMatch(/.+/);
+    expect(u.searchParams.get('code_challenge_method')).toBe('S256');
+    const state = u.searchParams.get('state')!;
+    expect(pending.take(state)?.flow).toBe('xcity');
+  });
+
+  it('handleXcityCallback exchanges code + persists session + emits', async () => {
+    const { reader, writer, store } = makeStorageDeps();
+    const fake = new FakeClient();
+    const pending = new PendingOAuthStore();
+    const entry = pending.start('xcity');
+    const url = `xct-agent://auth/callback?code=auth_code_xyz&state=${entry.state}`;
+    const emitter = new EventEmitter();
+    const events: unknown[] = [];
+    emitter.on('session-changed', (v) => events.push(v));
+    const view = await handleXcityCallback(url, {
+      client: fake as unknown as import('./client.js').AuthClient,
+      reader,
+      writer,
+      pending,
+      emitter,
+    });
+    expect(view.signed_in).toBe(true);
+    expect(fake.exchangeOidcCodeImpl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'auth_code_xyz',
+        code_verifier: entry.code_verifier,
+      }),
+    );
+    expect(store.userAccessToken).toBe('oidc_acc');
+    expect(store.userRefreshToken).toBe('oidc_ref');
+    expect(events).toHaveLength(1);
+  });
+
+  it('handleXcityCallback rejects state belonging to a non-xcity flow', async () => {
+    const { reader, writer } = makeStorageDeps();
+    const fake = new FakeClient();
+    const pending = new PendingOAuthStore();
+    // Caller registered a Google flow but the deep-link arrived as ?code= …
+    const entry = pending.start('google');
+    const url = `xct-agent://auth/callback?code=stolen_code&state=${entry.state}`;
+    await expect(
+      handleXcityCallback(url, {
+        client: fake as unknown as import('./client.js').AuthClient,
+        reader,
+        writer,
+        pending,
+      }),
+    ).rejects.toMatchObject({ code: 'oauth_state_mismatch' });
+    expect(fake.exchangeOidcCodeImpl).not.toHaveBeenCalled();
+  });
+
+  it('handleXcityCallback surfaces upstream error param', async () => {
+    const { reader, writer } = makeStorageDeps();
+    const fake = new FakeClient();
+    const url =
+      'xct-agent://auth/callback?error=access_denied&error_description=User+cancelled';
+    await expect(
+      handleXcityCallback(url, {
+        client: fake as unknown as import('./client.js').AuthClient,
+        reader,
+        writer,
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_credentials' });
   });
 
   it('getLiteLlmBearer returns refresh-failed when refresh throws', async () => {

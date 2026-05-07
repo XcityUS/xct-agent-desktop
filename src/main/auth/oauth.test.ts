@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAuthorizeUrl,
+  buildXcityAuthorizeUrl,
   CALLBACK_URL,
   CUSTOM_PROTOCOL,
   deriveCodeChallenge,
   generateCodeVerifier,
   generateState,
   parseCallbackUrl,
+  parseXcityCallback,
   PendingOAuthStore,
 } from './oauth.js';
 import { createHash } from 'crypto';
@@ -84,6 +86,69 @@ describe('oauth helpers', () => {
   it('parseCallbackUrl prefers fragment over query for same key', () => {
     const url = 'xct-agent://auth/callback?state=from_query#state=from_fragment';
     expect(parseCallbackUrl(url).state).toBe('from_fragment');
+  });
+
+  it('buildXcityAuthorizeUrl targets /oauth/authorize with OIDC params', () => {
+    const url = buildXcityAuthorizeUrl({
+      authApiUrl: 'https://auth.xcity.one/',
+      clientId: 'client-uuid',
+      state: 's_abc',
+      code_challenge: 'cc_xyz',
+    });
+    const u = new URL(url);
+    expect(u.origin).toBe('https://auth.xcity.one');
+    expect(u.pathname).toBe('/oauth/authorize');
+    expect(u.searchParams.get('response_type')).toBe('code');
+    expect(u.searchParams.get('client_id')).toBe('client-uuid');
+    expect(u.searchParams.get('redirect_uri')).toBe(CALLBACK_URL);
+    expect(u.searchParams.get('scope')).toBe('openid profile email');
+    expect(u.searchParams.get('state')).toBe('s_abc');
+    expect(u.searchParams.get('code_challenge')).toBe('cc_xyz');
+    expect(u.searchParams.get('code_challenge_method')).toBe('S256');
+  });
+
+  it('buildXcityAuthorizeUrl honors scope + redirect_uri overrides', () => {
+    const url = buildXcityAuthorizeUrl({
+      authApiUrl: 'https://auth.xcity.one',
+      clientId: 'cli',
+      state: 's',
+      code_challenge: 'c',
+      scope: 'openid email',
+      redirect_uri: 'xct-agent://other/cb',
+    });
+    const u = new URL(url);
+    expect(u.searchParams.get('scope')).toBe('openid email');
+    expect(u.searchParams.get('redirect_uri')).toBe('xct-agent://other/cb');
+  });
+
+  it('parseXcityCallback extracts code + state from query', () => {
+    const url = 'xct-agent://auth/callback?code=auth_code_123&state=s1';
+    const p = parseXcityCallback(url);
+    expect(p.code).toBe('auth_code_123');
+    expect(p.state).toBe('s1');
+    expect(p.error).toBeNull();
+  });
+
+  it('parseXcityCallback extracts error from query', () => {
+    const url =
+      'xct-agent://auth/callback?error=access_denied&error_description=User+cancelled&state=s1';
+    const p = parseXcityCallback(url);
+    expect(p.error).toBe('access_denied');
+    expect(p.error_description).toBe('User cancelled');
+    expect(p.code).toBeNull();
+  });
+
+  it('parseXcityCallback ignores fragment (OIDC code-flow uses query only)', () => {
+    const url = 'xct-agent://auth/callback?code=qcode#code=fragment_code';
+    expect(parseXcityCallback(url).code).toBe('qcode');
+  });
+
+  it('PendingOAuthStore tracks the OAuthFlow per entry', () => {
+    const store = new PendingOAuthStore();
+    const xcity = store.start('xcity');
+    const google = store.start('google');
+    expect(store.take(xcity.state)?.flow).toBe('xcity');
+    expect(store.take(google.state)?.flow).toBe('google');
   });
 
   it('PendingOAuthStore.start + take is one-shot (returns then deletes)', () => {

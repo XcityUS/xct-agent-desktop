@@ -8,6 +8,8 @@ export default {
   signInLoading: "Signing in…",
   signInGoogle: "Sign in with Google",
   signInGoogleLoading: "Opening browser…",
+  signInXcity: "Sign in with Xcity",
+  signInXcityLoading: "Opening browser…",
   signInForgot: "Forgot password?",
   signInNoAccount: "Don't have an account?",
   signInCreateAccount: "Create one",
