@@ -814,6 +814,11 @@ function setupIPC(): void {
     }
   });
 
+  // Bearer for tokenhub.xcity.one. Returned to renderer so the chat layer
+  // can call /v1/* directly with the user's plan-scoped token (the wallet
+  // hook injects plan/entitlements/wallet_id/rate_limits claims).
+  ipcMain.handle("litellm-get-bearer", () => authApi.getLiteLlmBearer());
+
   // Forward session-changed events from main → renderer.
   authApi.on("session-changed", () => {
     BrowserWindow.getAllWindows().forEach((w) => {

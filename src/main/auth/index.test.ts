@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { EventEmitter } from 'events';
 import {
+  getLiteLlmBearer,
   getSession,
   getSessionView,
   handleOAuthCallback,
@@ -380,5 +381,75 @@ describe('auth facade', () => {
     off();
     emitter.emit('session-changed', null);
     expect(events).toHaveLength(2);
+  });
+
+  it('getLiteLlmBearer returns access_token+expires_at when fresh', async () => {
+    const { reader, writer, store } = makeStorageDeps();
+    Object.assign(store, {
+      userAccessToken: 'access_xyz',
+      userRefreshToken: 'refresh_xyz',
+      tokenExpiresAt: '2000',
+      userEmail: 'e@x.com',
+      userId: 'user_1',
+    });
+    const fake = new FakeClient();
+    const result = await getLiteLlmBearer({
+      client: fake as unknown as import('./client.js').AuthClient,
+      reader,
+      writer,
+      now: () => 1500, // far from expiry
+    });
+    expect(result).toEqual({ access_token: 'access_xyz', expires_at: 2000 });
+    expect(fake.refreshImpl).not.toHaveBeenCalled();
+  });
+
+  it('getLiteLlmBearer returns not-signed-in when no session', async () => {
+    const { reader, writer } = makeStorageDeps();
+    const result = await getLiteLlmBearer({ reader, writer });
+    expect(result).toEqual({ error: 'not-signed-in' });
+  });
+
+  it('getLiteLlmBearer triggers refresh + returns fresh token when expiring', async () => {
+    const { reader, writer, store } = makeStorageDeps();
+    Object.assign(store, {
+      userAccessToken: 'old',
+      userRefreshToken: 'old_ref',
+      tokenExpiresAt: '2000',
+      userEmail: 'e@x.com',
+      userId: 'user_1',
+    });
+    const fake = new FakeClient();
+    // FakeClient.refreshImpl returns access_token: 'fresh', expires_at: 1_700_000_000
+    const result = await getLiteLlmBearer({
+      client: fake as unknown as import('./client.js').AuthClient,
+      reader,
+      writer,
+      now: () => 1950, // within 60s leeway → triggers refresh
+    });
+    expect(fake.refreshImpl).toHaveBeenCalledWith('old_ref');
+    expect(result).toMatchObject({ access_token: 'fresh' });
+    expect(store.userAccessToken).toBe('fresh');
+  });
+
+  it('getLiteLlmBearer returns refresh-failed when refresh throws', async () => {
+    const { reader, writer, store } = makeStorageDeps();
+    Object.assign(store, {
+      userAccessToken: 'old',
+      userRefreshToken: 'old_ref',
+      tokenExpiresAt: '2000',
+      userEmail: 'e@x.com',
+      userId: 'user_1',
+    });
+    const fake = new FakeClient();
+    fake.refreshImpl.mockRejectedValueOnce(
+      new AuthError('refresh_failed', 400, 'token revoked'),
+    );
+    const result = await getLiteLlmBearer({
+      client: fake as unknown as import('./client.js').AuthClient,
+      reader,
+      writer,
+      now: () => 1950,
+    });
+    expect(result).toEqual({ error: 'refresh-failed' });
   });
 });

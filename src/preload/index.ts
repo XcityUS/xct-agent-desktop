@@ -693,6 +693,10 @@ const hermesAPI = {
     ipcRenderer.invoke("auth-refresh"),
   authStartGoogleOAuth: (): Promise<AuthResult<Record<string, never>>> =>
     ipcRenderer.invoke("auth-start-google-oauth"),
+  litellmGetBearer: (): Promise<
+    | { access_token: string; expires_at: number }
+    | { error: "not-signed-in" | "refresh-failed" }
+  > => ipcRenderer.invoke("litellm-get-bearer"),
   onAuthSessionChanged: (
     callback: (view: AuthSessionView) => void,
   ): (() => void) => {

@@ -127,6 +127,40 @@ export function getSessionView(deps: AuthDeps = {}): SessionView {
   };
 }
 
+/**
+ * Resolve the user's LiteLLM bearer for `tokenhub.xcity.one` calls.
+ *
+ * The wallet hook (`/v1/auth/hook/access-token`) injects `plan`,
+ * `entitlements`, `wallet_id`, and `rate_limits` into every issued access
+ * token, so the same token returned here is what tokenhub validates +
+ * gates with. No separate xcity-home BFF round-trip is needed on desktop.
+ *
+ * Returns `{ access_token, expires_at }` (refreshed if expiring within 60s)
+ * or `{ error }` for the renderer to handle. Never throws.
+ */
+export type LiteLlmBearerResult =
+  | { access_token: string; expires_at: number }
+  | { error: 'not-signed-in' | 'refresh-failed' };
+
+export async function getLiteLlmBearer(
+  deps: AuthDeps = {},
+): Promise<LiteLlmBearerResult> {
+  if (!getSession(deps)) {
+    return { error: 'not-signed-in' };
+  }
+  try {
+    const token = await refreshIfNeeded(deps);
+    if (!token) return { error: 'not-signed-in' };
+  } catch {
+    return { error: 'refresh-failed' };
+  }
+  // refreshIfNeeded persists the new session on a successful refresh, so
+  // re-read to pick up the matching expires_at.
+  const fresh = getSession(deps);
+  if (!fresh) return { error: 'not-signed-in' };
+  return { access_token: fresh.access_token, expires_at: fresh.expires_at };
+}
+
 export async function signIn(
   email: string,
   password: string,

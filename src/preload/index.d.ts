@@ -477,6 +477,16 @@ interface HermesAPI {
   ) => Promise<AuthResult<Record<string, never>>>;
   authRefresh: () => Promise<AuthResult<{ signed_in: boolean }>>;
   authStartGoogleOAuth: () => Promise<AuthResult<Record<string, never>>>;
+  /**
+   * Returns the user's xcity-auth access token for use as a tokenhub
+   * bearer. The wallet hook stamps `plan`, `entitlements`, `wallet_id`,
+   * `rate_limits` claims into every issued token, so this is the same
+   * bearer tokenhub validates + gates with.
+   *
+   * On `not-signed-in` / `refresh-failed` the renderer should redirect to
+   * the sign-in screen.
+   */
+  litellmGetBearer: () => Promise<LiteLlmBearerResult>;
   onAuthSessionChanged: (
     callback: (view: AuthSessionView) => void,
   ) => () => void;
@@ -490,6 +500,10 @@ interface HermesAPI {
 type AuthResult<T> =
   | ({ ok: true } & T)
   | { ok: false; error: string; code?: string; status?: number };
+
+type LiteLlmBearerResult =
+  | { access_token: string; expires_at: number }
+  | { error: "not-signed-in" | "refresh-failed" };
 
 interface AuthSessionView {
   signed_in: boolean;
