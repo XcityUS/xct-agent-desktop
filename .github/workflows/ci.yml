@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Current renderer main chunk: ~639KB gzip. Target: 500KB after code-splitting.
+  BUNDLE_SIZE_LIMIT_KB: 700
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (TS strict)
+        run: npm run typecheck
+
+      - name: Lint (zero warnings)
+        run: npm run lint
+
+      - name: Test (Vitest)
+        run: npm run test
+
+      - name: Build (electron-vite)
+        run: npx electron-vite build
+
+      - name: Bundle size check
+        run: node scripts/check-bundle-size.mjs ${{ env.BUNDLE_SIZE_LIMIT_KB }}

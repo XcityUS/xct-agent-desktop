@@ -67,7 +67,9 @@ describe("I18nProvider", () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Switch to Spanish" }));
+      fireEvent.click(
+        screen.getByRole("button", { name: "Switch to Spanish" }),
+      );
     });
 
     expect(setLocale).toHaveBeenLastCalledWith("es");

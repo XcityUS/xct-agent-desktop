@@ -10,9 +10,9 @@
  * the wallet client) can react.
  */
 
-import { EventEmitter } from 'events';
-import { getConfig } from '../config-manager.js';
-import { AuthClient } from './client.js';
+import { EventEmitter } from "events";
+import { getConfig } from "../config-manager.js";
+import { AuthClient } from "./client.js";
 import {
   buildAuthorizeUrl,
   CALLBACK_URL,
@@ -20,7 +20,7 @@ import {
   deriveCodeChallenge,
   parseCallbackUrl,
   PendingOAuthStore,
-} from './oauth.js';
+} from "./oauth.js";
 import {
   clearSession as clearStored,
   isExpiringSoon,
@@ -28,16 +28,18 @@ import {
   saveSession,
   type PersistedSession,
   type StorageDeps,
-} from './storage.js';
-import { AuthError } from './types.js';
-import type { AuthSession, AuthUser, SignUpResult } from './types.js';
+} from "./storage.js";
+import { AuthError } from "./types.js";
+import type { AuthSession, AuthUser, SignUpResult } from "./types.js";
 
-const DEFAULT_AUTH_BASE = 'https://auth.xcity.one';
+const DEFAULT_AUTH_BASE = "https://auth.xcity.one";
 
 export class AuthNotConfiguredError extends Error {
   constructor() {
-    super('Auth API URL not configured. Set authApiUrl in config/env.<env>.yaml.');
-    this.name = 'AuthNotConfiguredError';
+    super(
+      "Auth API URL not configured. Set authApiUrl in config/env.<env>.yaml.",
+    );
+    this.name = "AuthNotConfiguredError";
   }
 }
 
@@ -66,7 +68,7 @@ function resolveBaseUrl(deps: AuthDeps = {}): string {
   if (fromEnv) return fromEnv;
   try {
     const cfg = getConfig() as Record<string, unknown>;
-    if (typeof cfg.authApiUrl === 'string' && cfg.authApiUrl) {
+    if (typeof cfg.authApiUrl === "string" && cfg.authApiUrl) {
       return cfg.authApiUrl;
     }
   } catch {
@@ -94,7 +96,7 @@ function getEmitter(deps: AuthDeps = {}): EventEmitter {
 }
 
 function emitSessionChanged(deps: AuthDeps = {}): void {
-  getEmitter(deps).emit('session-changed', getSession(deps));
+  getEmitter(deps).emit("session-changed", getSession(deps));
 }
 
 // ─── Public surface ───────────────────────────────────────────────────────────
@@ -133,7 +135,7 @@ export async function signIn(
   deps: AuthDeps = {},
 ): Promise<SessionView> {
   if (!email || !password) {
-    throw new AuthError('invalid_input', 0, 'email and password required');
+    throw new AuthError("invalid_input", 0, "email and password required");
   }
   const session = await getClient(deps).signIn(email.trim(), password);
   saveSession(session, deps);
@@ -147,10 +149,10 @@ export async function signUp(
   deps: AuthDeps = {},
 ): Promise<SignUpResult> {
   if (!email || !password) {
-    throw new AuthError('invalid_input', 0, 'email and password required');
+    throw new AuthError("invalid_input", 0, "email and password required");
   }
   const result = await getClient(deps).signUp(email.trim(), password);
-  if (result.kind === 'session') {
+  if (result.kind === "session") {
     saveSession(result.session, deps);
     emitSessionChanged(deps);
   }
@@ -175,7 +177,7 @@ export async function recoverPassword(
   email: string,
   deps: AuthDeps = {},
 ): Promise<void> {
-  if (!email) throw new AuthError('invalid_input', 0, 'email required');
+  if (!email) throw new AuthError("invalid_input", 0, "email required");
   await getClient(deps).recoverPassword(email.trim());
 }
 
@@ -200,7 +202,7 @@ export async function refreshIfNeeded(
     return fresh.access_token;
   } catch (e) {
     // Refresh token expired / revoked → drop the session, force re-login.
-    if (e instanceof AuthError && e.code === 'refresh_failed') {
+    if (e instanceof AuthError && e.code === "refresh_failed") {
       clearStored(deps);
       emitSessionChanged(deps);
     }
@@ -213,7 +215,7 @@ export async function refreshIfNeeded(
  * Caller (the IPC handler) is responsible for `shell.openExternal()`.
  */
 export function startOAuth(
-  provider: 'google',
+  provider: "google",
   deps: AuthDeps = {},
 ): { url: string } {
   const baseUrl = resolveBaseUrl(deps);
@@ -239,24 +241,24 @@ export async function handleOAuthCallback(
   const parsed = parseCallbackUrl(rawUrl);
   if (parsed.error) {
     throw new AuthError(
-      parsed.error === 'access_denied' ? 'invalid_credentials' : 'unknown',
+      parsed.error === "access_denied" ? "invalid_credentials" : "unknown",
       0,
       parsed.error_description || parsed.error,
     );
   }
   if (!parsed.state) {
-    throw new AuthError('oauth_state_mismatch', 0, 'callback missing state');
+    throw new AuthError("oauth_state_mismatch", 0, "callback missing state");
   }
   const entry = getPending(deps).take(parsed.state);
   if (!entry) {
     throw new AuthError(
-      'oauth_state_expired',
+      "oauth_state_expired",
       0,
-      'OAuth state expired or unknown — start over',
+      "OAuth state expired or unknown — start over",
     );
   }
   if (!parsed.access_token || !parsed.refresh_token) {
-    throw new AuthError('oauth_no_tokens', 0, 'callback missing tokens');
+    throw new AuthError("oauth_no_tokens", 0, "callback missing tokens");
   }
   // We don't have the user object from the callback fragment alone; fetch it.
   const user = await getClient(deps).getUser(parsed.access_token);
@@ -268,7 +270,7 @@ export async function handleOAuthCallback(
     refresh_token: parsed.refresh_token,
     expires_at: expiresAt,
     expires_in: parsed.expires_in ?? 3600,
-    token_type: 'bearer',
+    token_type: "bearer",
     user,
   };
   saveSession(session, deps);
@@ -277,7 +279,7 @@ export async function handleOAuthCallback(
 }
 
 export function on(
-  event: 'session-changed',
+  event: "session-changed",
   listener: (view: PersistedSession | null) => void,
   deps: AuthDeps = {},
 ): () => void {
@@ -299,5 +301,5 @@ function projectView(session: AuthSession): SessionView {
 
 // Re-exports for IPC-layer convenience.
 export { CUSTOM_PROTOCOL, CALLBACK_URL };
-export { AuthError } from './types.js';
+export { AuthError } from "./types.js";
 export type { AuthUser, AuthSession, SignUpResult, PersistedSession };

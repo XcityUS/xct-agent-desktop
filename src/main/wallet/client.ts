@@ -16,7 +16,7 @@ import type {
   RechargePackId,
   WalletBalance,
   WalletOrder,
-} from './types.js';
+} from "./types.js";
 
 export class WalletApiError extends Error {
   constructor(
@@ -25,7 +25,7 @@ export class WalletApiError extends Error {
     public body?: unknown,
   ) {
     super(message);
-    this.name = 'WalletApiError';
+    this.name = "WalletApiError";
   }
 }
 
@@ -44,15 +44,15 @@ export class WalletClient {
   private readonly _fetch: typeof fetch;
 
   constructor(config: WalletClientConfig) {
-    if (!config.baseUrl) throw new Error('WalletClient: baseUrl required');
-    if (!config.jwt) throw new Error('WalletClient: jwt required');
-    this.baseUrl = config.baseUrl.replace(/\/+$/, '');
+    if (!config.baseUrl) throw new Error("WalletClient: baseUrl required");
+    if (!config.jwt) throw new Error("WalletClient: jwt required");
+    this.baseUrl = config.baseUrl.replace(/\/+$/, "");
     this.jwt = config.jwt;
     this._fetch = config.fetch ?? fetch;
   }
 
   async getBalance(): Promise<WalletBalance> {
-    return this.request<WalletBalance>('GET', '/v1/wallet/balance');
+    return this.request<WalletBalance>("GET", "/v1/wallet/balance");
   }
 
   async createCheckout(params: {
@@ -62,8 +62,8 @@ export class WalletClient {
     cancel_url?: string;
   }): Promise<CheckoutSession> {
     return this.request<CheckoutSession>(
-      'POST',
-      '/v1/billing/checkout',
+      "POST",
+      "/v1/billing/checkout",
       params,
     );
   }
@@ -71,21 +71,19 @@ export class WalletClient {
   async getOrderHistory(limit = 50): Promise<{ orders: WalletOrder[] }> {
     const qs = new URLSearchParams({ limit: String(limit) });
     return this.request<{ orders: WalletOrder[] }>(
-      'GET',
+      "GET",
       `/v1/billing/orders?${qs.toString()}`,
     );
   }
 
   async setSpendCap(monthly_cap_usd: number | null): Promise<{ ok: true }> {
-    return this.request<{ ok: true }>(
-      'PUT',
-      '/v1/billing/spend-cap',
-      { monthly_cap_usd },
-    );
+    return this.request<{ ok: true }>("PUT", "/v1/billing/spend-cap", {
+      monthly_cap_usd,
+    });
   }
 
   private async request<T>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
     body?: unknown,
   ): Promise<T> {
@@ -93,7 +91,7 @@ export class WalletClient {
       method,
       headers: {
         Authorization: `Bearer ${this.jwt}`,
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
@@ -110,7 +108,7 @@ export class WalletClient {
         }
       }
       const msg =
-        (errBody && typeof errBody === 'object' && 'error' in errBody
+        (errBody && typeof errBody === "object" && "error" in errBody
           ? String((errBody as { error: unknown }).error)
           : null) ?? `${method} ${path} failed: ${res.status}`;
       throw new WalletApiError(res.status, msg, errBody);

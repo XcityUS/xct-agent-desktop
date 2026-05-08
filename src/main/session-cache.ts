@@ -33,7 +33,7 @@ function generateTitle(message: string): string {
   let text = message.trim();
 
   // Remove markdown formatting
-  text = text.replace(/[#*_`~\[\]()]/g, "");
+  text = text.replace(/[#*_`~[\]()]/g, "");
   // Remove URLs
   text = text.replace(/https?:\/\/\S+/g, "");
   // Remove extra whitespace
@@ -165,19 +165,13 @@ export function syncSessionCache(): CachedSession[] {
 }
 
 // Fast read from cache only (no DB access)
-export function listCachedSessions(
-  limit = 50,
-  offset = 0,
-): CachedSession[] {
+export function listCachedSessions(limit = 50, offset = 0): CachedSession[] {
   const cache = readCache();
   return cache.sessions.slice(offset, offset + limit);
 }
 
 // Update title for a specific session
-export function updateSessionTitle(
-  sessionId: string,
-  title: string,
-): void {
+export function updateSessionTitle(sessionId: string, title: string): void {
   const cache = readCache();
   const idx = cache.sessions.findIndex((s) => s.id === sessionId);
   if (idx >= 0) {

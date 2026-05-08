@@ -6,7 +6,7 @@ import {
   Menu,
   Notification,
 } from "electron";
-import { join } from "path";
+import { join, resolve } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import type { AppUpdater } from "electron-updater";
 import icon from "../../resources/icon.png?asset";
@@ -822,9 +822,12 @@ function setupIPC(): void {
   });
 }
 
-function mapAuthError(
-  e: unknown,
-): { ok: false; error: string; code?: string; status?: number } {
+function mapAuthError(e: unknown): {
+  ok: false;
+  error: string;
+  code?: string;
+  status?: number;
+} {
   if (e instanceof authApi.AuthError) {
     return { ok: false, error: e.message, code: e.code, status: e.status };
   }
@@ -834,9 +837,11 @@ function mapAuthError(
   };
 }
 
-function mapWalletError(
-  e: unknown,
-): { ok: false; error: string; status?: number } {
+function mapWalletError(e: unknown): {
+  ok: false;
+  error: string;
+  status?: number;
+} {
   if (e instanceof walletApi.WalletNotConnectedError) {
     return { ok: false, error: "wallet_not_connected" };
   }
@@ -1029,7 +1034,7 @@ function setupUpdater(): void {
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
     app.setAsDefaultProtocolClient(authApi.CUSTOM_PROTOCOL, process.execPath, [
-      require("path").resolve(process.argv[1]),
+      resolve(process.argv[1]),
     ]);
   }
 } else {
@@ -1073,8 +1078,7 @@ function handleAuthDeepLink(url: string): void {
       }
     })
     .catch((e: unknown) => {
-      const code =
-        e instanceof authApi.AuthError ? e.code : "unknown";
+      const code = e instanceof authApi.AuthError ? e.code : "unknown";
       const message = e instanceof Error ? e.message : String(e);
       const win = BrowserWindow.getAllWindows()[0];
       if (win) {

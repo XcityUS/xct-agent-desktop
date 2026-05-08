@@ -52,11 +52,31 @@ const STATUS_CONFIG: Record<
   OrderStatus,
   { icon: React.ReactNode; label: string; className: string }
 > = {
-  completed: { icon: <CheckCircle size={12} />, label: "Completed", className: "status-completed" },
-  pending: { icon: <Clock size={12} />, label: "Pending", className: "status-pending" },
-  failed: { icon: <XCircle size={12} />, label: "Failed", className: "status-failed" },
-  refunded: { icon: <AlertCircle size={12} />, label: "Refunded", className: "status-refunded" },
-  expired: { icon: <XCircle size={12} />, label: "Expired", className: "status-expired" },
+  completed: {
+    icon: <CheckCircle size={12} />,
+    label: "Completed",
+    className: "status-completed",
+  },
+  pending: {
+    icon: <Clock size={12} />,
+    label: "Pending",
+    className: "status-pending",
+  },
+  failed: {
+    icon: <XCircle size={12} />,
+    label: "Failed",
+    className: "status-failed",
+  },
+  refunded: {
+    icon: <AlertCircle size={12} />,
+    label: "Refunded",
+    className: "status-refunded",
+  },
+  expired: {
+    icon: <XCircle size={12} />,
+    label: "Expired",
+    className: "status-expired",
+  },
 };
 
 function StatusBadge({ status }: { status: OrderStatus }): React.JSX.Element {
@@ -73,7 +93,9 @@ interface OrderHistoryPageProps {
   onBack?: () => void;
 }
 
-function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element {
+function OrderHistoryPage({
+  onBack,
+}: OrderHistoryPageProps): React.JSX.Element {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +131,8 @@ function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element 
   }, [loadOrders]);
 
   const filtered = useMemo(
-    () => (filter === "all" ? orders : orders.filter((o) => o.status === filter)),
+    () =>
+      filter === "all" ? orders : orders.filter((o) => o.status === filter),
     [orders, filter],
   );
 
@@ -122,8 +145,16 @@ function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element 
     };
   }, [orders]);
 
-  const handleExportCSV = () => {
-    const headers = ["Order ID", "Created", "Status", "Credits", "Amount USD", "Provider", "Method"];
+  const handleExportCSV = (): void => {
+    const headers = [
+      "Order ID",
+      "Created",
+      "Status",
+      "Credits",
+      "Amount USD",
+      "Provider",
+      "Method",
+    ];
     const rows = filtered.map((o) => [
       o.id,
       formatDate(o.created_at),
@@ -133,7 +164,9 @@ function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element 
       o.provider,
       o.payment_method ?? "",
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const csv = [headers, ...rows]
+      .map((r) => r.map((c) => `"${c}"`).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -160,7 +193,9 @@ function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element 
         <div className="order-empty">
           <Wallet size={48} />
           <h3>Wallet not connected</h3>
-          <p>Connect your Xcity wallet in Settings to see your recharge history.</p>
+          <p>
+            Connect your Xcity wallet in Settings to see your recharge history.
+          </p>
         </div>
         <Styles />
       </div>
@@ -193,7 +228,9 @@ function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element 
         <div className="stat-card">
           <Coins size={20} />
           <div className="stat-content">
-            <span className="stat-value">{totals.credits.toLocaleString()}</span>
+            <span className="stat-value">
+              {totals.credits.toLocaleString()}
+            </span>
             <span className="stat-label">Total credits</span>
           </div>
         </div>
@@ -243,7 +280,11 @@ function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element 
         <div className="order-empty">
           <History size={48} />
           <h3>No orders</h3>
-          <p>{filter === "all" ? "You haven't placed any orders yet." : `No ${filter} orders.`}</p>
+          <p>
+            {filter === "all"
+              ? "You haven't placed any orders yet."
+              : `No ${filter} orders.`}
+          </p>
         </div>
       ) : (
         <div className="order-list">
@@ -260,30 +301,40 @@ function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element 
               <div className="order-card-body">
                 <div className="order-tokens">
                   <Coins size={18} />
-                  <span className="tokens-amount">{order.credits_granted.toLocaleString()}</span>
+                  <span className="tokens-amount">
+                    {order.credits_granted.toLocaleString()}
+                  </span>
                   <span className="tokens-label">credits</span>
                 </div>
 
                 <div className="order-details">
                   <div className="order-detail-row">
                     <span>Amount</span>
-                    <span className="detail-value">{formatUsd(order.amount_usd)}</span>
+                    <span className="detail-value">
+                      {formatUsd(order.amount_usd)}
+                    </span>
                   </div>
                   <div className="order-detail-row">
                     <span>Provider</span>
                     <span className="detail-value provider">
-                      {order.provider === "stripe" ? "Stripe" : "Coinbase Commerce"}
+                      {order.provider === "stripe"
+                        ? "Stripe"
+                        : "Coinbase Commerce"}
                       {order.payment_method ? ` · ${order.payment_method}` : ""}
                     </span>
                   </div>
                   <div className="order-detail-row">
                     <span>Created</span>
-                    <span className="detail-value">{formatDate(order.created_at)}</span>
+                    <span className="detail-value">
+                      {formatDate(order.created_at)}
+                    </span>
                   </div>
                   {order.completed_at && (
                     <div className="order-detail-row">
                       <span>Completed</span>
-                      <span className="detail-value">{formatDate(order.completed_at)}</span>
+                      <span className="detail-value">
+                        {formatDate(order.completed_at)}
+                      </span>
                     </div>
                   )}
                 </div>

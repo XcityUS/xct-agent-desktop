@@ -48,6 +48,7 @@ function Install({ onComplete, onFailed }: InstallProps): React.JSX.Element {
       });
 
     return cleanup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

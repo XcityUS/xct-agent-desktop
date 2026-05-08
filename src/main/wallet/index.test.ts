@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from "vitest";
 import {
   getBalance,
   createCheckout,
@@ -10,128 +10,129 @@ import {
   WalletNotConnectedError,
   WalletConfigError,
   getWalletBaseUrl,
-} from './index.js';
+} from "./index.js";
 
 function fakeFetch(body: unknown, status = 200): typeof fetch {
-  return vi.fn(async () =>
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    }),
+  return vi.fn(
+    async () =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "content-type": "application/json" },
+      }),
   ) as unknown as typeof fetch;
 }
 
-describe('wallet facade', () => {
-  it('isConnected false when no jwt', () => {
+describe("wallet facade", () => {
+  it("isConnected false when no jwt", () => {
     expect(isConnected({ readJwt: () => undefined })).toBe(false);
   });
 
-  it('isConnected true when jwt present', () => {
-    expect(isConnected({ readJwt: () => 'tok' })).toBe(true);
+  it("isConnected true when jwt present", () => {
+    expect(isConnected({ readJwt: () => "tok" })).toBe(true);
   });
 
-  it('getBalance throws WalletNotConnectedError when jwt missing', async () => {
-    await expect(getBalance({ readJwt: () => undefined })).rejects.toBeInstanceOf(
-      WalletNotConnectedError,
-    );
+  it("getBalance throws WalletNotConnectedError when jwt missing", async () => {
+    await expect(
+      getBalance({ readJwt: () => undefined }),
+    ).rejects.toBeInstanceOf(WalletNotConnectedError);
   });
 
-  it('createCheckout throws when jwt missing', async () => {
+  it("createCheckout throws when jwt missing", async () => {
     await expect(
       createCheckout(
-        { pack_id: 'pack_5', payment_method: 'card' },
+        { pack_id: "pack_5", payment_method: "card" },
         { readJwt: () => undefined },
       ),
     ).rejects.toBeInstanceOf(WalletNotConnectedError);
   });
 
-  it('getBalance returns body when jwt present', async () => {
+  it("getBalance returns body when jwt present", async () => {
     const body = {
-      wallet_id: 'w',
+      wallet_id: "w",
       balance: 1,
       monthly_cap_usd: null,
       spend_this_period_usd: 0,
-      plan: 'free',
-      plan_status: 'active',
+      plan: "free",
+      plan_status: "active",
     };
     const out = await getBalance({
-      readJwt: () => 'tok',
-      readBaseUrl: () => 'https://w',
+      readJwt: () => "tok",
+      readBaseUrl: () => "https://w",
       fetch: fakeFetch(body),
     });
     expect(out).toEqual(body);
   });
 
-  it('createCheckout returns checkout url', async () => {
+  it("createCheckout returns checkout url", async () => {
     const out = await createCheckout(
-      { pack_id: 'pack_25', payment_method: 'alipay' },
+      { pack_id: "pack_25", payment_method: "alipay" },
       {
-        readJwt: () => 'tok',
-        readBaseUrl: () => 'https://w',
+        readJwt: () => "tok",
+        readBaseUrl: () => "https://w",
         fetch: fakeFetch({
-          url: 'https://checkout.example/x',
-          provider: 'stripe',
-          session_id: 'cs_x',
+          url: "https://checkout.example/x",
+          provider: "stripe",
+          session_id: "cs_x",
         }),
       },
     );
-    expect(out.url).toBe('https://checkout.example/x');
+    expect(out.url).toBe("https://checkout.example/x");
   });
 
-  it('getOrderHistory returns orders array', async () => {
+  it("getOrderHistory returns orders array", async () => {
     const out = await getOrderHistory(20, {
-      readJwt: () => 'tok',
-      readBaseUrl: () => 'https://w',
+      readJwt: () => "tok",
+      readBaseUrl: () => "https://w",
       fetch: fakeFetch({ orders: [] }),
     });
     expect(out.orders).toEqual([]);
   });
 
-  it('setSpendCap returns ok', async () => {
+  it("setSpendCap returns ok", async () => {
     const out = await setSpendCap(100, {
-      readJwt: () => 'tok',
-      readBaseUrl: () => 'https://w',
+      readJwt: () => "tok",
+      readBaseUrl: () => "https://w",
       fetch: fakeFetch({ ok: true }),
     });
     expect(out.ok).toBe(true);
   });
 
-  it('getWalletBaseUrl prefers override > env > yaml > prod default', () => {
+  it("getWalletBaseUrl prefers override > env > yaml > prod default", () => {
     const original = process.env.WALLET_API_URL;
     delete process.env.WALLET_API_URL;
     try {
       // 1. override (test injection) wins over everything
       expect(
         getWalletBaseUrl({
-          readBaseUrl: () => 'https://override',
-          readEnv: () => 'production',
+          readBaseUrl: () => "https://override",
+          readEnv: () => "production",
         }),
-      ).toBe('https://override');
+      ).toBe("https://override");
 
       // 2. env var wins over yaml + default
-      process.env.WALLET_API_URL = 'https://env-url';
-      expect(getWalletBaseUrl({ readEnv: () => 'production' })).toBe(
-        'https://env-url',
+      process.env.WALLET_API_URL = "https://env-url";
+      expect(getWalletBaseUrl({ readEnv: () => "production" })).toBe(
+        "https://env-url",
       );
       // override still wins over env var
       expect(
         getWalletBaseUrl({
-          readBaseUrl: () => 'https://override',
-          readEnv: () => 'production',
+          readBaseUrl: () => "https://override",
+          readEnv: () => "production",
         }),
-      ).toBe('https://override');
+      ).toBe("https://override");
     } finally {
       if (original === undefined) delete process.env.WALLET_API_URL;
       else process.env.WALLET_API_URL = original;
     }
   });
 
-  it('getWalletBaseUrl falls back to wallet.xcity.one ONLY in production', () => {
+  it("getWalletBaseUrl falls back to wallet.xcity.one ONLY in production", () => {
     const original = process.env.WALLET_API_URL;
     delete process.env.WALLET_API_URL;
     try {
-      expect(getWalletBaseUrl({ readEnv: () => 'production' })).toBe(
-        'https://wallet.xcity.one',
+      expect(getWalletBaseUrl({ readEnv: () => "production" })).toBe(
+        "https://wallet.xcity.one",
       );
     } finally {
       if (original === undefined) delete process.env.WALLET_API_URL;
@@ -139,15 +140,15 @@ describe('wallet facade', () => {
     }
   });
 
-  it('getWalletBaseUrl throws WalletConfigError in development when nothing configured', () => {
+  it("getWalletBaseUrl throws WalletConfigError in development when nothing configured", () => {
     const original = process.env.WALLET_API_URL;
     delete process.env.WALLET_API_URL;
     try {
-      expect(() => getWalletBaseUrl({ readEnv: () => 'development' })).toThrow(
+      expect(() => getWalletBaseUrl({ readEnv: () => "development" })).toThrow(
         WalletConfigError,
       );
       // Error message must point operators at the right yaml file.
-      expect(() => getWalletBaseUrl({ readEnv: () => 'development' })).toThrow(
+      expect(() => getWalletBaseUrl({ readEnv: () => "development" })).toThrow(
         /env\.development\.yaml/,
       );
     } finally {
@@ -156,11 +157,11 @@ describe('wallet facade', () => {
     }
   });
 
-  it('getWalletBaseUrl throws WalletConfigError in staging when nothing configured', () => {
+  it("getWalletBaseUrl throws WalletConfigError in staging when nothing configured", () => {
     const original = process.env.WALLET_API_URL;
     delete process.env.WALLET_API_URL;
     try {
-      expect(() => getWalletBaseUrl({ readEnv: () => 'staging' })).toThrow(
+      expect(() => getWalletBaseUrl({ readEnv: () => "staging" })).toThrow(
         /env\.staging\.yaml/,
       );
     } finally {
@@ -169,41 +170,41 @@ describe('wallet facade', () => {
     }
   });
 
-  it('setWalletJwt rejects empty string', () => {
-    expect(() => setWalletJwt('', { writeJwt: () => {} })).toThrow(
+  it("setWalletJwt rejects empty string", () => {
+    expect(() => setWalletJwt("", { writeJwt: () => {} })).toThrow(
       WalletConfigError,
     );
   });
 
-  it('setWalletJwt rejects too-short tokens', () => {
-    expect(() => setWalletJwt('short', { writeJwt: () => {} })).toThrow(
+  it("setWalletJwt rejects too-short tokens", () => {
+    expect(() => setWalletJwt("short", { writeJwt: () => {} })).toThrow(
       /too short/,
     );
   });
 
-  it('setWalletJwt persists trimmed jwt via writeJwt dep', () => {
+  it("setWalletJwt persists trimmed jwt via writeJwt dep", () => {
     const written: Array<string | undefined> = [];
-    setWalletJwt('  eyJ.fake.token-aaaaaaaaaaaaaaaa  ', {
+    setWalletJwt("  eyJ.fake.token-aaaaaaaaaaaaaaaa  ", {
       writeJwt: (v) => written.push(v),
     });
-    expect(written).toEqual(['eyJ.fake.token-aaaaaaaaaaaaaaaa']);
+    expect(written).toEqual(["eyJ.fake.token-aaaaaaaaaaaaaaaa"]);
   });
 
-  it('setWalletJwt rejects non-string input', () => {
+  it("setWalletJwt rejects non-string input", () => {
     expect(() =>
       setWalletJwt(123 as unknown as string, { writeJwt: () => {} }),
     ).toThrow(WalletConfigError);
   });
 
-  it('clearWalletJwt persists undefined via writeJwt dep', () => {
+  it("clearWalletJwt persists undefined via writeJwt dep", () => {
     const written: Array<string | undefined> = [];
     clearWalletJwt({ writeJwt: (v) => written.push(v) });
     expect(written).toEqual([undefined]);
   });
 
-  it('setWalletJwt followed by isConnected (via dep stub) returns true', () => {
+  it("setWalletJwt followed by isConnected (via dep stub) returns true", () => {
     let stored: string | undefined;
-    setWalletJwt('eyJfake.long.enough.token.value', {
+    setWalletJwt("eyJfake.long.enough.token.value", {
       writeJwt: (v) => {
         stored = v;
       },

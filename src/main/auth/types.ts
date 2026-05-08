@@ -24,7 +24,7 @@ export interface AuthSession {
   /** Seconds-from-issue (informational; we use `expires_at` for refresh checks). */
   expires_in: number;
   /** Echoes "bearer". */
-  token_type: 'bearer';
+  token_type: "bearer";
   user: AuthUser;
 }
 
@@ -34,8 +34,8 @@ export interface AuthSession {
  * email first and only `user` is populated.
  */
 export type SignUpResult =
-  | { kind: 'session'; session: AuthSession }
-  | { kind: 'requires_verification'; user: AuthUser };
+  | { kind: "session"; session: AuthSession }
+  | { kind: "requires_verification"; user: AuthUser };
 
 /**
  * Typed error from the auth layer. The `code` is stable across UI / IPC,
@@ -43,31 +43,31 @@ export type SignUpResult =
  */
 export type AuthErrorCode =
   /** Bad credentials (HTTP 400 invalid_grant from GoTrue). */
-  | 'invalid_credentials'
+  | "invalid_credentials"
   /** Email already registered (HTTP 422). */
-  | 'email_already_registered'
+  | "email_already_registered"
   /** Password too weak per GoTrue config. */
-  | 'weak_password'
+  | "weak_password"
   /** Captcha / WAF blocked the request. */
-  | 'captcha_required'
+  | "captcha_required"
   /** GoTrue rate limit. */
-  | 'rate_limited'
+  | "rate_limited"
   /** OAuth state mismatch / CSRF. */
-  | 'oauth_state_mismatch'
+  | "oauth_state_mismatch"
   /** OAuth state expired (>5 min). */
-  | 'oauth_state_expired'
+  | "oauth_state_expired"
   /** OAuth redirect did not include tokens (provider denied). */
-  | 'oauth_no_tokens'
+  | "oauth_no_tokens"
   /** Network failure / GoTrue unreachable. */
-  | 'network_error'
+  | "network_error"
   /** GoTrue 5xx. */
-  | 'server_error'
+  | "server_error"
   /** Refresh token revoked / expired. */
-  | 'refresh_failed'
+  | "refresh_failed"
   /** Validation issue (empty fields, malformed email). */
-  | 'invalid_input'
+  | "invalid_input"
   /** Anything else. */
-  | 'unknown';
+  | "unknown";
 
 export class AuthError extends Error {
   constructor(
@@ -77,6 +77,6 @@ export class AuthError extends Error {
     public detail?: unknown,
   ) {
     super(message);
-    this.name = 'AuthError';
+    this.name = "AuthError";
   }
 }

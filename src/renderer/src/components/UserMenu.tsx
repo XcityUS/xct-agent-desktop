@@ -7,7 +7,9 @@ interface UserMenuProps {
   onSignInClick: () => void;
 }
 
-export default function UserMenu({ onSignInClick }: UserMenuProps): React.JSX.Element {
+export default function UserMenu({
+  onSignInClick,
+}: UserMenuProps): React.JSX.Element {
   const { t } = useI18n();
   const { session, loading } = useAuthSession();
   const [open, setOpen] = useState(false);

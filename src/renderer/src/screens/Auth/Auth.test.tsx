@@ -21,7 +21,9 @@ interface AuthAPI {
 
 let api: AuthAPI;
 
-async function render(ui: React.ReactElement): Promise<ReturnType<typeof rtlRender>> {
+async function render(
+  ui: React.ReactElement,
+): Promise<ReturnType<typeof rtlRender>> {
   let result!: ReturnType<typeof rtlRender>;
   await act(async () => {
     result = rtlRender(<I18nProvider>{ui}</I18nProvider>);
@@ -56,7 +58,9 @@ describe("AuthFlow — sign in", () => {
       target: { value: "pw12345678" },
     });
     fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
-    await waitFor(() => expect(api.authSignIn).toHaveBeenCalledWith("e@x.com", "pw12345678"));
+    await waitFor(() =>
+      expect(api.authSignIn).toHaveBeenCalledWith("e@x.com", "pw12345678"),
+    );
     await waitFor(() => expect(onSignedIn).toHaveBeenCalled());
   });
 
@@ -67,11 +71,17 @@ describe("AuthFlow — sign in", () => {
       code: "invalid_credentials",
     });
     await render(<AuthFlow onSignedIn={() => {}} />);
-    fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "e@x" } });
-    fireEvent.change(screen.getByPlaceholderText(/password/i), { target: { value: "wrong" } });
+    fireEvent.change(screen.getByPlaceholderText(/email/i), {
+      target: { value: "e@x" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/password/i), {
+      target: { value: "wrong" },
+    });
     fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
     await waitFor(() =>
-      expect(screen.getByText(/invalid email or password/i)).toBeInTheDocument(),
+      expect(
+        screen.getByText(/invalid email or password/i),
+      ).toBeInTheDocument(),
     );
   });
 
@@ -96,13 +106,17 @@ describe("AuthFlow — sign in", () => {
 
   it("clicking Google triggers authStartGoogleOAuth", async () => {
     await render(<AuthFlow onSignedIn={() => {}} googleEnabled={true} />);
-    fireEvent.click(screen.getByRole("button", { name: /sign in with google/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /sign in with google/i }),
+    );
     await waitFor(() => expect(api.authStartGoogleOAuth).toHaveBeenCalled());
   });
 
   it("shows cancel link when cancelable=true", async () => {
     const onCancel = vi.fn();
-    await render(<AuthFlow onSignedIn={() => {}} cancelable={true} onCancel={onCancel} />);
+    await render(
+      <AuthFlow onSignedIn={() => {}} cancelable={true} onCancel={onCancel} />,
+    );
     fireEvent.click(screen.getByText(/continue without account/i));
     expect(onCancel).toHaveBeenCalled();
   });
@@ -111,7 +125,9 @@ describe("AuthFlow — sign in", () => {
 describe("AuthFlow — sign up", () => {
   it("rejects mismatched passwords", async () => {
     await render(<AuthFlow initialMode="signup" onSignedIn={() => {}} />);
-    fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "e@x.com" } });
+    fireEvent.change(screen.getByPlaceholderText(/email/i), {
+      target: { value: "e@x.com" },
+    });
     fireEvent.change(screen.getByPlaceholderText(/^password.*8/i), {
       target: { value: "pw12345678" },
     });
@@ -127,7 +143,9 @@ describe("AuthFlow — sign up", () => {
 
   it("rejects passwords shorter than 8 chars", async () => {
     await render(<AuthFlow initialMode="signup" onSignedIn={() => {}} />);
-    fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "e@x.com" } });
+    fireEvent.change(screen.getByPlaceholderText(/email/i), {
+      target: { value: "e@x.com" },
+    });
     fireEvent.change(screen.getByPlaceholderText(/^password.*8/i), {
       target: { value: "short" },
     });
@@ -148,7 +166,9 @@ describe("AuthFlow — sign up", () => {
       email: "new@x.com",
     });
     await render(<AuthFlow initialMode="signup" onSignedIn={() => {}} />);
-    fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "new@x.com" } });
+    fireEvent.change(screen.getByPlaceholderText(/email/i), {
+      target: { value: "new@x.com" },
+    });
     fireEvent.change(screen.getByPlaceholderText(/^password.*8/i), {
       target: { value: "pw12345678" },
     });
@@ -163,9 +183,15 @@ describe("AuthFlow — sign up", () => {
 
   it("calls onSignedIn on autoconfirm session result", async () => {
     const onSignedIn = vi.fn();
-    api.authSignUp.mockResolvedValueOnce({ ok: true, kind: "session", session: {} });
+    api.authSignUp.mockResolvedValueOnce({
+      ok: true,
+      kind: "session",
+      session: {},
+    });
     await render(<AuthFlow initialMode="signup" onSignedIn={onSignedIn} />);
-    fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "e@x" } });
+    fireEvent.change(screen.getByPlaceholderText(/email/i), {
+      target: { value: "e@x" },
+    });
     fireEvent.change(screen.getByPlaceholderText(/^password.*8/i), {
       target: { value: "pw12345678" },
     });

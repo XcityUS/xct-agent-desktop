@@ -15,30 +15,35 @@
  * (Codex P1 fix).
  */
 
-import { getSecrets, getConfig, getCurrentEnv, patchSecrets } from '../config-manager.js';
-import * as authApi from '../auth/index.js';
-import { WalletClient } from './client.js';
+import {
+  getSecrets,
+  getConfig,
+  getCurrentEnv,
+  patchSecrets,
+} from "../config-manager.js";
+import * as authApi from "../auth/index.js";
+import { WalletClient } from "./client.js";
 import type {
   CheckoutSession,
   PaymentMethod,
   RechargePackId,
   WalletBalance,
   WalletOrder,
-} from './types.js';
+} from "./types.js";
 
-const DEFAULT_WALLET_BASE = 'https://wallet.xcity.one';
+const DEFAULT_WALLET_BASE = "https://wallet.xcity.one";
 
 export class WalletNotConnectedError extends Error {
   constructor() {
-    super('Wallet not connected — paste your Xcity access token in Settings');
-    this.name = 'WalletNotConnectedError';
+    super("Wallet not connected — paste your Xcity access token in Settings");
+    this.name = "WalletNotConnectedError";
   }
 }
 
 export class WalletConfigError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'WalletConfigError';
+    this.name = "WalletConfigError";
   }
 }
 
@@ -46,7 +51,7 @@ export interface WalletDeps {
   /** Override config readers. Used by tests. */
   readJwt?: () => string | undefined;
   readBaseUrl?: () => string | undefined;
-  readEnv?: () => 'development' | 'staging' | 'production';
+  readEnv?: () => "development" | "staging" | "production";
   /** Override fetch. Used by tests. */
   fetch?: typeof fetch;
   /** Override secret writes. Used by tests. */
@@ -70,11 +75,11 @@ export function getWalletBaseUrl(deps: WalletDeps = {}): string {
   const fromEnv = process.env.WALLET_API_URL;
   if (fromEnv) return fromEnv;
 
-  let envName: 'development' | 'staging' | 'production' = 'development';
+  let envName: "development" | "staging" | "production" = "development";
   try {
     const cfg = getConfig();
     const cfgRecord = cfg as Record<string, unknown>;
-    if (typeof cfgRecord.walletApiUrl === 'string' && cfgRecord.walletApiUrl) {
+    if (typeof cfgRecord.walletApiUrl === "string" && cfgRecord.walletApiUrl) {
       return cfgRecord.walletApiUrl;
     }
     envName = (deps.readEnv?.() ?? getCurrentEnv()) as typeof envName;
@@ -82,7 +87,7 @@ export function getWalletBaseUrl(deps: WalletDeps = {}): string {
     envName = deps.readEnv?.() ?? envName;
   }
 
-  if (envName === 'production') return DEFAULT_WALLET_BASE;
+  if (envName === "production") return DEFAULT_WALLET_BASE;
 
   throw new WalletConfigError(
     `walletApiUrl not configured for env=${envName}. ` +
@@ -106,7 +111,7 @@ export function readWalletJwt(deps: WalletDeps = {}): string | undefined {
   try {
     const secrets = getSecrets() as Record<string, unknown>;
     const jwt = secrets.walletJwt;
-    return typeof jwt === 'string' && jwt.length > 0 ? jwt : undefined;
+    return typeof jwt === "string" && jwt.length > 0 ? jwt : undefined;
   } catch {
     return undefined;
   }
@@ -114,12 +119,14 @@ export function readWalletJwt(deps: WalletDeps = {}): string | undefined {
 
 /** Persist a wallet access token from the UI. Throws on obviously-bad input. */
 export function setWalletJwt(jwt: string, deps: WalletDeps = {}): void {
-  if (typeof jwt !== 'string') {
-    throw new WalletConfigError('walletJwt must be a string');
+  if (typeof jwt !== "string") {
+    throw new WalletConfigError("walletJwt must be a string");
   }
   const trimmed = jwt.trim();
   if (trimmed.length < 20) {
-    throw new WalletConfigError('walletJwt looks too short to be a valid token');
+    throw new WalletConfigError(
+      "walletJwt looks too short to be a valid token",
+    );
   }
   if (deps.writeJwt) {
     deps.writeJwt(trimmed);
@@ -193,11 +200,11 @@ export function isConnected(deps?: WalletDeps): boolean {
   return Boolean(readWalletJwt(deps));
 }
 
-export { WalletApiError } from './client.js';
+export { WalletApiError } from "./client.js";
 export type {
   WalletBalance,
   WalletOrder,
   CheckoutSession,
   PaymentMethod,
   RechargePackId,
-} from './types.js';
+} from "./types.js";

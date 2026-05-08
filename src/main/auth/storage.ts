@@ -11,8 +11,8 @@
  * the real config-manager singletons.
  */
 
-import { getSecrets, patchSecrets } from '../config-manager.js';
-import type { AuthSession } from './types.js';
+import { getSecrets, patchSecrets } from "../config-manager.js";
+import type { AuthSession } from "./types.js";
 
 export interface PersistedSession {
   access_token: string;
@@ -29,44 +29,51 @@ export interface StorageDeps {
   reader?: () => Record<string, unknown>;
 }
 
-const KEY_ACCESS = 'userAccessToken';
-const KEY_REFRESH = 'userRefreshToken';
-const KEY_EXPIRES = 'tokenExpiresAt';
-const KEY_EMAIL = 'userEmail';
-const KEY_USER_ID = 'userId';
+const KEY_ACCESS = "userAccessToken";
+const KEY_REFRESH = "userRefreshToken";
+const KEY_EXPIRES = "tokenExpiresAt";
+const KEY_EMAIL = "userEmail";
+const KEY_USER_ID = "userId";
 
 export function loadSession(deps: StorageDeps = {}): PersistedSession | null {
-  const secrets = (deps.reader?.() ?? (getSecrets() as Record<string, unknown>));
+  const secrets = deps.reader?.() ?? (getSecrets() as Record<string, unknown>);
   const access = secrets[KEY_ACCESS];
   const refresh = secrets[KEY_REFRESH];
   const expires = secrets[KEY_EXPIRES];
   const userId = secrets[KEY_USER_ID];
   if (
-    typeof access !== 'string' ||
-    typeof refresh !== 'string' ||
-    typeof userId !== 'string' ||
+    typeof access !== "string" ||
+    typeof refresh !== "string" ||
+    typeof userId !== "string" ||
     !access ||
     !refresh ||
     !userId
   ) {
     return null;
   }
-  const expiresAt = typeof expires === 'string' ? Number(expires) : Number(expires ?? 0);
+  const expiresAt =
+    typeof expires === "string" ? Number(expires) : Number(expires ?? 0);
   return {
     access_token: access,
     refresh_token: refresh,
     expires_at: Number.isFinite(expiresAt) ? expiresAt : 0,
-    email: typeof secrets[KEY_EMAIL] === 'string' ? (secrets[KEY_EMAIL] as string) : null,
+    email:
+      typeof secrets[KEY_EMAIL] === "string"
+        ? (secrets[KEY_EMAIL] as string)
+        : null,
     user_id: userId,
   };
 }
 
-export function saveSession(session: AuthSession, deps: StorageDeps = {}): void {
+export function saveSession(
+  session: AuthSession,
+  deps: StorageDeps = {},
+): void {
   const patch = {
     [KEY_ACCESS]: session.access_token,
     [KEY_REFRESH]: session.refresh_token,
     [KEY_EXPIRES]: String(session.expires_at),
-    [KEY_EMAIL]: session.user.email ?? '',
+    [KEY_EMAIL]: session.user.email ?? "",
     [KEY_USER_ID]: session.user.id,
   };
   if (deps.writer) {

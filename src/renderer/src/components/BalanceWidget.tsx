@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { Coins, AlertTriangle, ChevronDown, ChevronUp, X, Plus, History } from "lucide-react";
+import {
+  Coins,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Plus,
+  History,
+} from "lucide-react";
 import TokenDetail, { TokenUsageEntry } from "./TokenDetail";
 
 export interface BalanceWidgetProps {
@@ -45,16 +53,40 @@ function BalanceWidget({
 
   // Mock history - in production this would come from actual transaction records
   const [historyEntries] = useState<HistoryEntry[]>([
-    { id: "1", type: "deduction", amount: 2.50, description: "GPT-4 Turbo - 12,500 tokens", timestamp: Date.now() - 3600000 },
-    { id: "2", type: "deduction", amount: 1.20, description: "Claude 3 Sonnet - 8,200 tokens", timestamp: Date.now() - 7200000 },
-    { id: "3", type: "recharge", amount: 100.00, description: "Top up - XCT Pack", timestamp: Date.now() - 86400000 },
-    { id: "4", type: "deduction", amount: 3.80, description: "GPT-4 Turbo - 18,400 tokens", timestamp: Date.now() - 172800000 },
+    {
+      id: "1",
+      type: "deduction",
+      amount: 2.5,
+      description: "GPT-4 Turbo - 12,500 tokens",
+      timestamp: Date.now() - 3600000,
+    },
+    {
+      id: "2",
+      type: "deduction",
+      amount: 1.2,
+      description: "Claude 3 Sonnet - 8,200 tokens",
+      timestamp: Date.now() - 7200000,
+    },
+    {
+      id: "3",
+      type: "recharge",
+      amount: 100.0,
+      description: "Top up - XCT Pack",
+      timestamp: Date.now() - 86400000,
+    },
+    {
+      id: "4",
+      type: "deduction",
+      amount: 3.8,
+      description: "GPT-4 Turbo - 18,400 tokens",
+      timestamp: Date.now() - 172800000,
+    },
   ]);
 
   // Fetch balance on mount (mock implementation)
   // In production, this would call window.desktopApi.cloud.getBalance()
   useEffect(() => {
-    async function fetchBalance() {
+    async function fetchBalance(): Promise<void> {
       try {
         // Mock balance for demo - in production use actual API
         // For now, simulate with a reasonable demo value
@@ -77,6 +109,7 @@ function BalanceWidget({
     setBalanceAnimating(true);
     const timer = setTimeout(() => setBalanceAnimating(false), 600);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balance]);
 
   // Track chat usage via IPC
@@ -104,10 +137,7 @@ function BalanceWidget({
           promptTokens: base.promptTokens + usage.promptTokens,
           completionTokens: base.completionTokens + usage.completionTokens,
           totalTokens: base.totalTokens + usage.totalTokens,
-          cost:
-            usage.cost != null
-              ? (base.cost ?? 0) + usage.cost
-              : base.cost,
+          cost: usage.cost != null ? (base.cost ?? 0) + usage.cost : base.cost,
         };
         if (!sessionStartRef.current) {
           sessionStartRef.current = { ...updated };
@@ -132,17 +162,19 @@ function BalanceWidget({
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
-  const handleRecharge = () => {
+  const handleRecharge = (): void => {
     if (onRecharge) {
       onRecharge();
     } else {
       // Default: open recharge modal or page
-      console.log("Recharge clicked");
+      // TODO: open recharge modal
     }
   };
 
   return (
-    <div className={`balance-widget ${lowBalance ? "balance-widget--low" : ""}`}>
+    <div
+      className={`balance-widget ${lowBalance ? "balance-widget--low" : ""}`}
+    >
       <div className="balance-widget-main">
         <div className="balance-widget-balance">
           <Coins size={14} className="balance-widget-icon" />
@@ -150,7 +182,9 @@ function BalanceWidget({
             <span className="balance-widget-loading">Loading...</span>
           ) : (
             <>
-              <span className={`balance-widget-value ${balanceAnimating ? "balance-widget-value--animating" : ""}`}>
+              <span
+                className={`balance-widget-value ${balanceAnimating ? "balance-widget-value--animating" : ""}`}
+              >
                 {balance.toFixed(2)}
               </span>
               <span className="balance-widget-unit">XCT</span>
@@ -158,10 +192,7 @@ function BalanceWidget({
           )}
           {lowBalance && !balanceLoading && (
             <span title="Low balance warning">
-              <AlertTriangle
-                size={14}
-                className="balance-widget-warning"
-              />
+              <AlertTriangle size={14} className="balance-widget-warning" />
             </span>
           )}
         </div>
@@ -230,7 +261,10 @@ function BalanceWidget({
           </div>
           <div className="balance-widget-history-list">
             {historyEntries.slice(0, 5).map((entry) => (
-              <div key={entry.id} className={`balance-widget-history-item balance-widget-history-item--${entry.type}`}>
+              <div
+                key={entry.id}
+                className={`balance-widget-history-item balance-widget-history-item--${entry.type}`}
+              >
                 <div className="balance-widget-history-item-icon">
                   {entry.type === "recharge" ? (
                     <Plus size={12} />
@@ -239,11 +273,18 @@ function BalanceWidget({
                   )}
                 </div>
                 <div className="balance-widget-history-item-content">
-                  <span className="balance-widget-history-item-desc">{entry.description}</span>
-                  <span className="balance-widget-history-item-time">{formatTimeAgo(entry.timestamp)}</span>
+                  <span className="balance-widget-history-item-desc">
+                    {entry.description}
+                  </span>
+                  <span className="balance-widget-history-item-time">
+                    {formatTimeAgo(entry.timestamp)}
+                  </span>
                 </div>
-                <div className={`balance-widget-history-item-amount ${entry.type === "recharge" ? "positive" : "negative"}`}>
-                  {entry.type === "recharge" ? "+" : "-"}{entry.amount.toFixed(2)} XCT
+                <div
+                  className={`balance-widget-history-item-amount ${entry.type === "recharge" ? "positive" : "negative"}`}
+                >
+                  {entry.type === "recharge" ? "+" : "-"}
+                  {entry.amount.toFixed(2)} XCT
                 </div>
               </div>
             ))}

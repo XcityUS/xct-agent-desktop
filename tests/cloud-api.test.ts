@@ -130,21 +130,29 @@ describe("getBalance", () => {
 describe("reportUsage", () => {
   beforeEach(() => {
     // Use invalid URL for fast failure
-    configureCloudApi({ baseUrl: "https://127.0.0.1:99999", apiKey: "test-key", timeout: 500 });
+    configureCloudApi({
+      baseUrl: "https://127.0.0.1:99999",
+      apiKey: "test-key",
+      timeout: 500,
+    });
   });
 
   // reportUsage hardcodes maxRetries: 3 internally, needs longer timeout
-  it("returns success=false when network error", { timeout: 15000 }, async () => {
-    const result = await reportUsage({
-      promptTokens: 100,
-      completionTokens: 50,
-      totalTokens: 150,
-      model: "test-model",
-      timestamp: Date.now(),
-    });
-    expect(result.success).toBe(false);
-    expect(result.error).toBeDefined();
-  });
+  it(
+    "returns success=false when network error",
+    { timeout: 15000 },
+    async () => {
+      const result = await reportUsage({
+        promptTokens: 100,
+        completionTokens: 50,
+        totalTokens: 150,
+        model: "test-model",
+        timestamp: Date.now(),
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    },
+  );
 });
 
 // ─── healthCheck ─────────────────────────────────────────────────────────────
@@ -185,14 +193,20 @@ describe("Cloud Mode", () => {
   });
 
   it("determineCloudMode returns offline when no API key and health fails", async () => {
-    configureCloudApi({ baseUrl: "https://invalid-url-that-does-not-exist.test", apiKey: "" });
+    configureCloudApi({
+      baseUrl: "https://invalid-url-that-does-not-exist.test",
+      apiKey: "",
+    });
     const mode = await determineCloudMode();
     // Without API key, should be offline
     expect(mode).toBe("offline");
   });
 
   it("determineCloudMode returns degraded when API key set but health fails", async () => {
-    configureCloudApi({ baseUrl: "https://invalid-url-that-does-not-exist.test", apiKey: "test-key" });
+    configureCloudApi({
+      baseUrl: "https://invalid-url-that-does-not-exist.test",
+      apiKey: "test-key",
+    });
     const mode = await determineCloudMode();
     // With API key set but health fails, should be degraded
     expect(mode).toBe("degraded");

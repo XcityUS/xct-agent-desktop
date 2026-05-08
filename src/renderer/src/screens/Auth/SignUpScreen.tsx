@@ -58,7 +58,10 @@ export default function SignUpScreen({
   if (verifyEmail) {
     return (
       <div className="auth-screen">
-        <CheckCircle size={48} style={{ color: "var(--color-success, #22c55e)", margin: "0 auto" }} />
+        <CheckCircle
+          size={48}
+          style={{ color: "var(--color-success, #22c55e)", margin: "0 auto" }}
+        />
         <h1 className="auth-title" style={{ textAlign: "center" }}>
           {t("auth.signUpRequiresVerification", { email: verifyEmail })}
         </h1>
@@ -77,7 +80,9 @@ export default function SignUpScreen({
 
       <form className="auth-form" onSubmit={onSubmit}>
         <label className="auth-label">
-          <span className="auth-icon"><Mail size={16} /></span>
+          <span className="auth-icon">
+            <Mail size={16} />
+          </span>
           <input
             type="email"
             className="input"
@@ -90,7 +95,9 @@ export default function SignUpScreen({
         </label>
 
         <label className="auth-label">
-          <span className="auth-icon"><Lock size={16} /></span>
+          <span className="auth-icon">
+            <Lock size={16} />
+          </span>
           <input
             type="password"
             className="input"
@@ -103,7 +110,9 @@ export default function SignUpScreen({
         </label>
 
         <label className="auth-label">
-          <span className="auth-icon"><Lock size={16} /></span>
+          <span className="auth-icon">
+            <Lock size={16} />
+          </span>
           <input
             type="password"
             className="input"
@@ -122,9 +131,15 @@ export default function SignUpScreen({
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary auth-submit" disabled={busy}>
+        <button
+          type="submit"
+          className="btn btn-primary auth-submit"
+          disabled={busy}
+        >
           {busy ? (
-            <><Loader2 size={14} className="spin" /> {t("auth.signUpLoading")}</>
+            <>
+              <Loader2 size={14} className="spin" /> {t("auth.signUpLoading")}
+            </>
           ) : (
             t("auth.signUpSubmit")
           )}

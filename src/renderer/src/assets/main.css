@@ -4746,17 +4746,39 @@ body {
 }
 
 .cloud-toggle--to-cloud {
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--accent-subtle) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--bg-secondary) 0%,
+    var(--accent-subtle) 100%
+  );
 }
 
 .cloud-toggle--to-local {
-  background: linear-gradient(135deg, var(--accent-subtle) 0%, var(--bg-secondary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--accent-subtle) 0%,
+    var(--bg-secondary) 100%
+  );
 }
 
 @keyframes error-shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-  20%, 40%, 60%, 80% { transform: translateX(4px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
 }
 
 .cloud-toggle--error-shake {
@@ -4777,8 +4799,15 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.9); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.9);
+  }
 }
 
 .cloud-toggle-header {
@@ -4806,23 +4835,42 @@ body {
   flex-shrink: 0;
 }
 
-.cloud-toggle-status--connected { color: var(--success); }
-.cloud-toggle-status--connecting { color: var(--warning); animation: spin 1s linear infinite; }
-.cloud-toggle-status--disconnected { color: var(--text-muted); }
-.cloud-toggle-status--error { color: var(--error); }
+.cloud-toggle-status--connected {
+  color: var(--success);
+}
+.cloud-toggle-status--connecting {
+  color: var(--warning);
+  animation: spin 1s linear infinite;
+}
+.cloud-toggle-status--disconnected {
+  color: var(--text-muted);
+}
+.cloud-toggle-status--error {
+  color: var(--error);
+}
 
 .cloud-toggle-status-text {
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.cloud-toggle-status-text.cloud-toggle-status--connected { color: var(--success); }
-.cloud-toggle-status-text.cloud-toggle-status--connecting { color: var(--warning); }
-.cloud-toggle-status-text.cloud-toggle-status--error { color: var(--error); }
+.cloud-toggle-status-text.cloud-toggle-status--connected {
+  color: var(--success);
+}
+.cloud-toggle-status-text.cloud-toggle-status--connecting {
+  color: var(--warning);
+}
+.cloud-toggle-status-text.cloud-toggle-status--error {
+  color: var(--error);
+}
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .cloud-toggle-modes {
@@ -4873,8 +4921,14 @@ body {
 }
 
 @keyframes mode-btn-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); box-shadow: 0 0 0 3px var(--accent-subtle); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+  }
 }
 
 .cloud-toggle-mode-btn-transition-dot {
@@ -4889,8 +4943,15 @@ body {
 }
 
 @keyframes dot-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
 }
 
 .cloud-toggle-config {
@@ -4978,14 +5039,23 @@ body {
 
 .cloud-toggle-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-text) 50%, var(--accent) 100%);
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--accent-text) 50%,
+    var(--accent) 100%
+  );
   background-size: 200% 100%;
   animation: progress-sweep 1.5s ease-in-out infinite;
 }
 
 @keyframes progress-sweep {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 /* Spinner in button */
@@ -5129,8 +5199,13 @@ body {
 
 /* Balance Widget Animations */
 @keyframes balance-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 .balance-widget-value--animating {

@@ -5,9 +5,7 @@ import { mkdirSync, rmSync, existsSync } from "fs";
 // vi.hoisted runs before module imports, so we can't reference imported
 // helpers here — use the bare Node modules via require.
 const { TEST_HOME } = vi.hoisted(() => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const path = require("path");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const os = require("os");
   return {
     TEST_HOME: path.join(

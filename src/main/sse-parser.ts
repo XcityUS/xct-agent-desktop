@@ -72,8 +72,7 @@ export function processSseData(
 
     // Capture error responses forwarded through SSE
     if (parsed.error) {
-      state.lastError =
-        parsed.error.message || JSON.stringify(parsed.error);
+      state.lastError = parsed.error.message || JSON.stringify(parsed.error);
       return { done: false, hasContent: state.hasContent };
     }
 
@@ -151,9 +150,7 @@ export interface RemoteStreamCallbacks {
  * Parse a raw SSE block from a remote stream.
  * Returns structured chunk data.
  */
-export function parseRemoteBlock(
-  block: string,
-): RemoteSseChunk | null {
+export function parseRemoteBlock(block: string): RemoteSseChunk | null {
   const parsed = parseSseBlock(block);
   if (!parsed) return null;
 
@@ -191,12 +188,15 @@ export function parseRemoteBlock(
 
   // Extract error
   if (data.error) {
-    const errMsg = (data.error as { message?: string }).message || JSON.stringify(data.error);
+    const errMsg =
+      (data.error as { message?: string }).message ||
+      JSON.stringify(data.error);
     return { delta: "", done: false, error: errMsg };
   }
 
   // Extract content delta
-  const delta = (data.choices as Array<{ delta?: { content?: string } }>)?.[0]?.delta;
+  const delta = (data.choices as Array<{ delta?: { content?: string } }>)?.[0]
+    ?.delta;
   if (delta?.content) {
     return { delta: delta.content, done: false };
   }
@@ -212,12 +212,27 @@ export function parseRemoteUsage(
   usageData: Record<string, unknown>,
 ): ParsedUsage {
   return {
-    promptTokens: (usageData.prompt_tokens as number) || (usageData.promptTokens as number) || 0,
-    completionTokens: (usageData.completion_tokens as number) || (usageData.completionTokens as number) || 0,
-    totalTokens: (usageData.total_tokens as number) || (usageData.totalTokens as number) || 0,
+    promptTokens:
+      (usageData.prompt_tokens as number) ||
+      (usageData.promptTokens as number) ||
+      0,
+    completionTokens:
+      (usageData.completion_tokens as number) ||
+      (usageData.completionTokens as number) ||
+      0,
+    totalTokens:
+      (usageData.total_tokens as number) ||
+      (usageData.totalTokens as number) ||
+      0,
     cost: usageData.cost as number | undefined,
-    rateLimitRemaining: (usageData.rate_limit_remaining as number) || (usageData.rateLimitRemaining as number) || undefined,
-    rateLimitReset: (usageData.rate_limit_reset as number) || (usageData.rateLimitReset as number) || undefined,
+    rateLimitRemaining:
+      (usageData.rate_limit_remaining as number) ||
+      (usageData.rateLimitRemaining as number) ||
+      undefined,
+    rateLimitReset:
+      (usageData.rate_limit_reset as number) ||
+      (usageData.rateLimitReset as number) ||
+      undefined,
   };
 }
 
@@ -258,7 +273,11 @@ export async function parseRemoteStream(
         }
 
         if (parsed.toolProgress) {
-          cb.onChunk({ delta: "", done: false, toolProgress: parsed.toolProgress });
+          cb.onChunk({
+            delta: "",
+            done: false,
+            toolProgress: parsed.toolProgress,
+          });
         }
       }
     }
@@ -291,9 +310,7 @@ export async function parseRemoteStream(
  * Process a remote SSE data string and extract usage if present.
  * Returns usage data if found, null otherwise.
  */
-export function extractRemoteUsage(
-  data: string,
-): ParsedUsage | null {
+export function extractRemoteUsage(data: string): ParsedUsage | null {
   try {
     const parsed = JSON.parse(data);
     if (parsed.usage) {
@@ -312,11 +329,17 @@ export function extractRemoteUsage(
 export function splitSseEvents(raw: string): string[] {
   // Try splitting by double newlines first
   if (raw.includes("\n\n")) {
-    return raw.split("\n\n").map((e) => e.trim()).filter(Boolean);
+    return raw
+      .split("\n\n")
+      .map((e) => e.trim())
+      .filter(Boolean);
   }
   // Fall back to single newlines for simpler streams
   if (raw.includes("\n")) {
-    return raw.split("\n").map((e) => e.trim()).filter(Boolean);
+    return raw
+      .split("\n")
+      .map((e) => e.trim())
+      .filter(Boolean);
   }
   // No newlines, return as-is
   return raw ? [raw] : [];
@@ -377,7 +400,11 @@ const DEFAULT_RESILIENT_OPTIONS: Required<ResilientStreamOptions> = {
 /**
  * Calculate delay with exponential backoff and jitter.
  */
-function calculateRetryDelay(attempt: number, baseDelayMs: number, maxDelayMs: number): number {
+function calculateRetryDelay(
+  attempt: number,
+  baseDelayMs: number,
+  maxDelayMs: number,
+): number {
   const exponentialDelay = baseDelayMs * Math.pow(2, attempt - 1);
   const cappedDelay = Math.min(exponentialDelay, maxDelayMs);
   // Add jitter (±20%) to prevent thundering herd
@@ -387,7 +414,7 @@ function calculateRetryDelay(attempt: number, baseDelayMs: number, maxDelayMs: n
 
 /**
  * Resilient SSE stream parser with reconnection, resume, and error recovery.
- * 
+ *
  * Features:
  * - Automatic reconnection on stream failure
  * - Checkpoint-based resume after reconnection
@@ -443,7 +470,7 @@ export class ResilientSseParser {
 
   /**
    * Parse a remote SSE stream with automatic reconnection and resume support.
-   * 
+   *
    * @param streamFactory Async function that creates a new stream (used for reconnection)
    * @param callbacks Stream callbacks for chunk, done, error events
    * @param initialCheckpoint Optional checkpoint to resume from
@@ -473,7 +500,7 @@ export class ResilientSseParser {
       try {
         const stream = await streamFactory();
         await this._parseStream(stream, callbacks);
-        
+
         // Stream completed successfully
         if (!this.aborted) {
           callbacks.onDone();
@@ -558,7 +585,11 @@ export class ResilientSseParser {
           }
 
           if (parsed.toolProgress) {
-            callbacks.onChunk({ delta: "", done: false, toolProgress: parsed.toolProgress });
+            callbacks.onChunk({
+              delta: "",
+              done: false,
+              toolProgress: parsed.toolProgress,
+            });
           }
         }
       }
@@ -599,7 +630,7 @@ export class ResilientSseParser {
 /**
  * Parse a raw SSE stream with automatic reconnection.
  * This is a convenience wrapper around ResilientSseParser.
- * 
+ *
  * @param streamFactory Factory function that creates a new stream on each call
  * @param callbacks Stream callbacks
  * @param options Reconnection options

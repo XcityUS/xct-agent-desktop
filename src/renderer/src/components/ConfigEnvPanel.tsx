@@ -63,17 +63,31 @@ interface ConfigEnvPanelProps {
   /** Called when user switches environment */
   onEnvChange?: (env: Env) => void;
   /** Called when user saves API keys */
-  onSaveKeys?: (env: Env, stripeKey: string, coinbaseKey: string) => Promise<void>;
+  onSaveKeys?: (
+    env: Env,
+    stripeKey: string,
+    coinbaseKey: string,
+  ) => Promise<void>;
 }
 
-function MaskedValue({ value, prefix }: { value: string; prefix: string }) {
+function MaskedValue({
+  value,
+  prefix,
+}: {
+  value: string;
+  prefix: string;
+}): React.JSX.Element {
   const [visible, setVisible] = useState(false);
   if (!value) return <span className="env-value-empty">Not configured</span>;
   if (visible) {
     return (
       <span className="env-value-masked">
         <code>{value}</code>
-        <button className="env-icon-btn" onClick={() => setVisible(false)} title="Hide">
+        <button
+          className="env-icon-btn"
+          onClick={() => setVisible(false)}
+          title="Hide"
+        >
           <EyeOff size={13} />
         </button>
       </span>
@@ -81,8 +95,15 @@ function MaskedValue({ value, prefix }: { value: string; prefix: string }) {
   }
   return (
     <span className="env-value-masked">
-      <code>{prefix}{"•".repeat(Math.max(8, value.length - prefix.length - 4))}</code>
-      <button className="env-icon-btn" onClick={() => setVisible(true)} title="Show">
+      <code>
+        {prefix}
+        {"•".repeat(Math.max(8, value.length - prefix.length - 4))}
+      </code>
+      <button
+        className="env-icon-btn"
+        onClick={() => setVisible(true)}
+        title="Show"
+      >
         <Eye size={13} />
       </button>
     </span>
@@ -99,12 +120,15 @@ function ConfigEnvPanel({
   const [stripeKeyDraft, setStripeKeyDraft] = useState("");
   const [coinbaseKeyDraft, setCoinbaseKeyDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [saveResult, setSaveResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [testing, setTesting] = useState(false);
 
   const panel = ENV_PANELS[selectedEnv];
 
-  const handleEnvSelect = (env: Env) => {
+  const handleEnvSelect = (env: Env): void => {
     setSelectedEnv(env);
     setEditingKeys(false);
     setSaveResult(null);
@@ -113,7 +137,7 @@ function ConfigEnvPanel({
     }
   };
 
-  const handleEditKeys = () => {
+  const handleEditKeys = (): void => {
     setStripeKeyDraft(ENV_PANELS[selectedEnv].stripeKey || "");
     setCoinbaseKeyDraft(ENV_PANELS[selectedEnv].coinbaseKey || "");
     setEditingKeys(true);
@@ -137,7 +161,7 @@ function ConfigEnvPanel({
     }
   }, [selectedEnv, stripeKeyDraft, coinbaseKeyDraft, onSaveKeys]);
 
-  const handleTestConnection = async () => {
+  const handleTestConnection = async (): Promise<void> => {
     setTesting(true);
     // In production: test connectivity to the env's API URL
     await new Promise((r) => setTimeout(r, 800));
@@ -169,9 +193,7 @@ function ConfigEnvPanel({
                 style={{ background: cfg.color }}
               />
               <span className="env-tab-label">{cfg.label}</span>
-              {isActive && (
-                <Check size={12} className="env-active-check" />
-              )}
+              {isActive && <Check size={12} className="env-active-check" />}
             </button>
           );
         })}
@@ -184,10 +206,7 @@ function ConfigEnvPanel({
             <h3 className="env-detail-title">{panel.label}</h3>
             <p className="env-detail-desc">{panel.description}</p>
           </div>
-          <span
-            className="env-badge"
-            style={{ background: panel.color }}
-          >
+          <span className="env-badge" style={{ background: panel.color }}>
             {activeEnv === selectedEnv ? "Active" : "Inactive"}
           </span>
         </div>
@@ -249,7 +268,11 @@ function ConfigEnvPanel({
                   onClick={handleSaveKeys}
                   disabled={saving}
                 >
-                  {saving ? <RefreshCw size={14} className="spin" /> : <Check size={14} />}
+                  {saving ? (
+                    <RefreshCw size={14} className="spin" />
+                  ) : (
+                    <Check size={14} />
+                  )}
                   {saving ? "Saving..." : "Save Keys"}
                 </button>
               </div>
@@ -268,8 +291,14 @@ function ConfigEnvPanel({
           )}
 
           {saveResult && (
-            <div className={`env-save-result ${saveResult.success ? "success" : "error"}`}>
-              {saveResult.success ? <Check size={14} /> : <AlertCircle size={14} />}
+            <div
+              className={`env-save-result ${saveResult.success ? "success" : "error"}`}
+            >
+              {saveResult.success ? (
+                <Check size={14} />
+              ) : (
+                <AlertCircle size={14} />
+              )}
               <span>{saveResult.message}</span>
             </div>
           )}

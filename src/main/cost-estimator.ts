@@ -23,25 +23,28 @@ export interface TokenEstimate {
 }
 
 /** Cents per 1k tokens — kept loose; authoritative numbers live in xct-wallet's rate card. */
-const RATE_CARD: Record<string, { input_per_1k: number; output_per_1k: number }> = {
-  'gpt-4o': { input_per_1k: 5, output_per_1k: 15 },
-  'gpt-4-turbo': { input_per_1k: 10, output_per_1k: 30 },
-  'gpt-4': { input_per_1k: 30, output_per_1k: 60 },
-  'gpt-3.5-turbo': { input_per_1k: 0.5, output_per_1k: 1.5 },
-  'claude-opus': { input_per_1k: 15, output_per_1k: 75 },
-  'claude-sonnet': { input_per_1k: 3, output_per_1k: 15 },
-  'claude-haiku': { input_per_1k: 0.8, output_per_1k: 4 },
-  'gemini-pro': { input_per_1k: 1.25, output_per_1k: 5 },
-  'gemini-ultra': { input_per_1k: 7, output_per_1k: 21 },
+const RATE_CARD: Record<
+  string,
+  { input_per_1k: number; output_per_1k: number }
+> = {
+  "gpt-4o": { input_per_1k: 5, output_per_1k: 15 },
+  "gpt-4-turbo": { input_per_1k: 10, output_per_1k: 30 },
+  "gpt-4": { input_per_1k: 30, output_per_1k: 60 },
+  "gpt-3.5-turbo": { input_per_1k: 0.5, output_per_1k: 1.5 },
+  "claude-opus": { input_per_1k: 15, output_per_1k: 75 },
+  "claude-sonnet": { input_per_1k: 3, output_per_1k: 15 },
+  "claude-haiku": { input_per_1k: 0.8, output_per_1k: 4 },
+  "gemini-pro": { input_per_1k: 1.25, output_per_1k: 5 },
+  "gemini-ultra": { input_per_1k: 7, output_per_1k: 21 },
   llama: { input_per_1k: 0.1, output_per_1k: 0.1 },
   mistral: { input_per_1k: 0.2, output_per_1k: 0.6 },
   default: { input_per_1k: 5, output_per_1k: 15 },
 };
 
 const TOKEN_CHARS_PER_TOKEN: Record<string, number> = {
-  'gpt-4': 4.0,
-  'gpt-4o': 4.2,
-  'gpt-3.5': 4.0,
+  "gpt-4": 4.0,
+  "gpt-4o": 4.2,
+  "gpt-3.5": 4.0,
   claude: 3.5,
   gemini: 4.0,
   llama: 3.5,
@@ -49,10 +52,13 @@ const TOKEN_CHARS_PER_TOKEN: Record<string, number> = {
   default: 4.0,
 };
 
-function pickRate(model: string): { input_per_1k: number; output_per_1k: number } {
+function pickRate(model: string): {
+  input_per_1k: number;
+  output_per_1k: number;
+} {
   const lower = model.toLowerCase();
   for (const [key, value] of Object.entries(RATE_CARD)) {
-    if (key !== 'default' && lower.includes(key)) return value;
+    if (key !== "default" && lower.includes(key)) return value;
   }
   return RATE_CARD.default;
 }
@@ -60,7 +66,7 @@ function pickRate(model: string): { input_per_1k: number; output_per_1k: number 
 function pickCharsPerToken(model: string): number {
   const lower = model.toLowerCase();
   for (const [key, value] of Object.entries(TOKEN_CHARS_PER_TOKEN)) {
-    if (key !== 'default' && lower.includes(key)) return value;
+    if (key !== "default" && lower.includes(key)) return value;
   }
   return TOKEN_CHARS_PER_TOKEN.default;
 }
@@ -85,7 +91,7 @@ export function measure(
   model: string,
 ): TokenEstimate {
   const promptText = Array.isArray(prompt)
-    ? prompt.map((m) => `${m.role}: ${m.content}`).join('\n')
+    ? prompt.map((m) => `${m.role}: ${m.content}`).join("\n")
     : prompt;
 
   const promptTokens = countTokens(promptText, model);

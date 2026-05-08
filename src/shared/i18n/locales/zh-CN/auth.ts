@@ -19,7 +19,8 @@ export default {
   signUpLoading: "创建中…",
   signUpHaveAccount: "已经有账号？",
   signUpSignIn: "去登录",
-  signUpRequiresVerification: "请查收邮箱 — 我们向 {{email}} 发了一封确认邮件。",
+  signUpRequiresVerification:
+    "请查收邮箱 — 我们向 {{email}} 发了一封确认邮件。",
   forgotTitle: "重置密码",
   forgotSubtitle: "输入注册邮箱，我们会发送一封重置邮件。",
   forgotEmail: "邮箱",

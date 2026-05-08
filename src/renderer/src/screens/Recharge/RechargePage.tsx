@@ -22,11 +22,23 @@ import {
 } from "lucide-react";
 
 const PACKS = [
-  { id: "pack_5",   amountUsd: 5,    credits: 5_000,   bonus: 0 },
-  { id: "pack_15",  amountUsd: 15,   credits: 15_000,  bonus: 750,    badge: "Popular" },
-  { id: "pack_25",  amountUsd: 25,   credits: 25_000,  bonus: 2_500,  badge: "Best Value" },
-  { id: "pack_50",  amountUsd: 50,   credits: 50_000,  bonus: 7_500 },
-  { id: "pack_100", amountUsd: 100,  credits: 100_000, bonus: 15_000 },
+  { id: "pack_5", amountUsd: 5, credits: 5_000, bonus: 0 },
+  {
+    id: "pack_15",
+    amountUsd: 15,
+    credits: 15_000,
+    bonus: 750,
+    badge: "Popular",
+  },
+  {
+    id: "pack_25",
+    amountUsd: 25,
+    credits: 25_000,
+    bonus: 2_500,
+    badge: "Best Value",
+  },
+  { id: "pack_50", amountUsd: 50, credits: 50_000, bonus: 7_500 },
+  { id: "pack_100", amountUsd: 100, credits: 100_000, bonus: 15_000 },
 ] as const;
 
 type Pack = (typeof PACKS)[number];
@@ -39,7 +51,10 @@ interface RechargePageProps {
   onBack?: () => void;
 }
 
-const PAYMENT_LABEL: Record<PaymentMethod, { label: string; sub: string; icon: React.ComponentType<{ size?: number }> }> = {
+const PAYMENT_LABEL: Record<
+  PaymentMethod,
+  { label: string; sub: string; icon: React.ComponentType<{ size?: number }> }
+> = {
   card: { label: "Credit Card", sub: "Stripe", icon: CreditCard },
   alipay: { label: "Alipay", sub: "Stripe", icon: CreditCard },
   wechat_pay: { label: "WeChat Pay", sub: "Stripe", icon: CreditCard },
@@ -126,8 +141,8 @@ function RechargePage({ onBack }: RechargePageProps): React.JSX.Element {
           <Wallet size={48} />
           <h2>Wallet not connected</h2>
           <p>
-            Paste your Xcity access token in Settings → Wallet to enable recharge,
-            balance, and order history.
+            Paste your Xcity access token in Settings → Wallet to enable
+            recharge, balance, and order history.
           </p>
         </div>
         <Styles />
@@ -164,8 +179,19 @@ function RechargePage({ onBack }: RechargePageProps): React.JSX.Element {
         <div className="recharge-success">
           <CheckCircle size={64} className="success-icon" />
           <h2>Checkout opened in browser</h2>
-          <p>Complete payment there. Your balance will update once the webhook clears.</p>
-          <button className="recharge-btn primary" onClick={() => { setStatus("idle"); setPack(null); setMethod(null); refreshBalance(); }}>
+          <p>
+            Complete payment there. Your balance will update once the webhook
+            clears.
+          </p>
+          <button
+            className="recharge-btn primary"
+            onClick={() => {
+              setStatus("idle");
+              setPack(null);
+              setMethod(null);
+              refreshBalance();
+            }}
+          >
             Done
           </button>
         </div>
@@ -178,7 +204,11 @@ function RechargePage({ onBack }: RechargePageProps): React.JSX.Element {
                 <button
                   key={p.id}
                   className={`denomination-card ${pack?.id === p.id ? "selected" : ""}`}
-                  onClick={() => { setPack(p); setStatus("idle"); setError(null); }}
+                  onClick={() => {
+                    setPack(p);
+                    setStatus("idle");
+                    setError(null);
+                  }}
                 >
                   {"badge" in p && p.badge && (
                     <span className="denomination-badge">{p.badge}</span>
@@ -211,8 +241,12 @@ function RechargePage({ onBack }: RechargePageProps): React.JSX.Element {
                       onClick={() => setMethod(m)}
                     >
                       <Icon size={24} />
-                      <span className="provider-name">{PAYMENT_LABEL[m].label}</span>
-                      <span className="provider-desc">{PAYMENT_LABEL[m].sub}</span>
+                      <span className="provider-name">
+                        {PAYMENT_LABEL[m].label}
+                      </span>
+                      <span className="provider-desc">
+                        {PAYMENT_LABEL[m].sub}
+                      </span>
                     </button>
                   );
                 })}
@@ -239,12 +273,15 @@ function RechargePage({ onBack }: RechargePageProps): React.JSX.Element {
                     <Loader2 size={18} className="spin" /> Opening checkout…
                   </>
                 ) : (
-                  <>Pay ${pack.amountUsd} with {PAYMENT_LABEL[method].label}</>
+                  <>
+                    Pay ${pack.amountUsd} with {PAYMENT_LABEL[method].label}
+                  </>
                 )}
               </button>
               <p className="checkout-note">
                 <Clock size={14} />
-                Checkout opens in your browser. Credits land via webhook within seconds.
+                Checkout opens in your browser. Credits land via webhook within
+                seconds.
               </p>
             </div>
           )}
