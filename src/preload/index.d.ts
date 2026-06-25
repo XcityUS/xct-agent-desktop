@@ -43,9 +43,12 @@ interface HermesAPI {
   getConfig: (key: string, profile?: string) => Promise<string | null>;
   setConfig: (key: string, value: string, profile?: string) => Promise<boolean>;
   getHermesHome: (profile?: string) => Promise<string>;
-  getModelConfig: (
-    profile?: string,
-  ) => Promise<{ provider: string; model: string; baseUrl: string; apiKey: string }>;
+  getModelConfig: (profile?: string) => Promise<{
+    provider: string;
+    model: string;
+    baseUrl: string;
+    apiKey: string;
+  }>;
   setModelConfig: (
     provider: string,
     model: string,

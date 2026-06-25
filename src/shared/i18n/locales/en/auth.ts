@@ -1,7 +1,8 @@
 export default {
   // Sign-in screen
   signInTitle: "Sign in to Xcity",
-  signInSubtitle: "Connect to enable Recharge, Order History, and cloud models.",
+  signInSubtitle:
+    "Connect to enable Recharge, Order History, and cloud models.",
   signInEmail: "Email",
   signInPassword: "Password",
   signInSubmit: "Sign in",

@@ -70,7 +70,9 @@ function parseYaml(content: string): Record<string, unknown> {
     if (trimmed.startsWith("#") || !trimmed.includes(":")) continue;
     const eqIndex = trimmed.indexOf(":");
     const key = trimmed.substring(0, eqIndex).trim();
-    let value: string | boolean | number = trimmed.substring(eqIndex + 1).trim();
+    let value: string | boolean | number = trimmed
+      .substring(eqIndex + 1)
+      .trim();
 
     // Parse typed values
     if (value === "true") value = true;
@@ -135,7 +137,7 @@ export function initConfig(
   _currentEnv = env;
   _envConfig = loadEnvConfig(env);
   _secretsConfig = loadSecretsConfig(env);
-  console.log(`[ConfigManager] Initialized in ${env} mode`);
+  console.warn(`[ConfigManager] Initialized in ${env} mode`);
 }
 
 export function getConfig(): EnvConfig {
@@ -185,12 +187,10 @@ export function getCurrentEnv(): "development" | "staging" | "production" {
   return _currentEnv;
 }
 
-export function switchEnv(
-  env: "development" | "staging" | "production",
-): void {
+export function switchEnv(env: "development" | "staging" | "production"): void {
   if (_currentEnv === env) return;
   initConfig(env);
-  console.log(`[ConfigManager] Switched to ${env}`);
+  console.warn(`[ConfigManager] Switched to ${env}`);
 }
 
 // ── Environment File Templates ──────────────────────────────────────────────

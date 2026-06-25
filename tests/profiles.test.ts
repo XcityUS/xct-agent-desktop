@@ -6,9 +6,7 @@ import { mkdirSync, writeFileSync, rmSync, existsSync } from "fs";
 // `join` / `tmpdir` here — use the bare Node modules via require, which is
 // the documented escape hatch for hoisted setup.
 const { TEST_HOME } = vi.hoisted(() => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const path = require("path");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const os = require("os");
   return {
     TEST_HOME: path.join(os.tmpdir(), `hermes-profiles-test-${Date.now()}`),

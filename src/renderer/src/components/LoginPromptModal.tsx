@@ -99,6 +99,7 @@ export default function LoginPromptModal({
 }
 
 // Tests-only — reset the launch flag.
+// eslint-disable-next-line react-refresh/only-export-components
 export function _resetLoginPromptFlag(): void {
   _promptShownThisLaunch = false;
 }

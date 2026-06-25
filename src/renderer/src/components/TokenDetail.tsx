@@ -75,7 +75,9 @@ function TokenDetail({
   if (entries.length === 0) {
     return (
       <div className="token-detail token-detail--empty">
-        <div className="token-detail-empty-text">No token usage recorded yet</div>
+        <div className="token-detail-empty-text">
+          No token usage recorded yet
+        </div>
       </div>
     );
   }
@@ -89,7 +91,8 @@ function TokenDetail({
           {grandTotal.totalTokens.toLocaleString()} tokens
           {grandTotal.cost > 0 && (
             <span className="token-detail-cost">
-              {" "}· ${grandTotal.cost.toFixed(4)}
+              {" "}
+              · ${grandTotal.cost.toFixed(4)}
             </span>
           )}
         </span>

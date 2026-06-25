@@ -13,7 +13,11 @@ import {
 } from "./installer";
 import { getModelConfig, readEnv, getConnectionConfig } from "./config";
 import { stripAnsi } from "./utils";
-import { chatCompletion, configureCloudApi, healthCheck as cloudHealthCheck } from "./cloud-api";
+import {
+  chatCompletion,
+  configureCloudApi,
+  healthCheck as cloudHealthCheck,
+} from "./cloud-api";
 
 const LOCAL_API_URL = "http://127.0.0.1:8642";
 
@@ -957,7 +961,10 @@ export async function chat(
     // Convert history to cloud API format
     const messages = params.history
       ? params.history.map((m) => ({
-          role: m.role === "agent" ? "assistant" : (m.role as "user" | "assistant" | "system"),
+          role:
+            m.role === "agent"
+              ? "assistant"
+              : (m.role as "user" | "assistant" | "system"),
           content: m.content,
         }))
       : [];

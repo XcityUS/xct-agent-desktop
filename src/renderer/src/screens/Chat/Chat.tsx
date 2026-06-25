@@ -370,7 +370,13 @@ function Chat({
     model: string,
     baseUrl: string,
   ): Promise<void> {
-    await window.hermesAPI.setModelConfig(provider, model, baseUrl, "", profile);
+    await window.hermesAPI.setModelConfig(
+      provider,
+      model,
+      baseUrl,
+      "",
+      profile,
+    );
     setCurrentModel(model);
     setCurrentProvider(provider);
     setCurrentBaseUrl(baseUrl);
@@ -907,7 +913,9 @@ function Chat({
               <Zap size={14} />
             </button>
             <div className="chat-fast-popover">
-              <strong>{fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}</strong>
+              <strong>
+                {fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}
+              </strong>
               <span>
                 {fastMode
                   ? t("chat.fastModeActive")

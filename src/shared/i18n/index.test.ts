@@ -19,7 +19,9 @@ describe("shared i18n", () => {
   });
 
   it("falls back to en when zh-CN key is missing", () => {
-    expect(t("nonExistent.fallbackKey", "zh-CN")).toBe("nonExistent.fallbackKey");
+    expect(t("nonExistent.fallbackKey", "zh-CN")).toBe(
+      "nonExistent.fallbackKey",
+    );
   });
 
   it("preserves interpolation placeholders in es", () => {

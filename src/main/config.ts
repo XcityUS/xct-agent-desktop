@@ -195,7 +195,12 @@ export function getModelConfig(profile?: string): {
   apiKey: string;
 } {
   const cacheKey = `mc:${profile || "default"}`;
-  const cached = getCached<{ provider: string; model: string; baseUrl: string; apiKey: string }>(cacheKey);
+  const cached = getCached<{
+    provider: string;
+    model: string;
+    baseUrl: string;
+    apiKey: string;
+  }>(cacheKey);
   if (cached) return cached;
 
   const { configFile } = profilePaths(profile);
@@ -286,7 +291,13 @@ export function getHermesHome(profile?: string): string {
 
 // ── Platform enabled/disabled in config.yaml ────────────
 
-const SUPPORTED_PLATFORMS = ["telegram", "discord", "slack", "whatsapp", "signal"];
+const SUPPORTED_PLATFORMS = [
+  "telegram",
+  "discord",
+  "slack",
+  "whatsapp",
+  "signal",
+];
 
 export function getPlatformEnabled(profile?: string): Record<string, boolean> {
   const { configFile } = profilePaths(profile);

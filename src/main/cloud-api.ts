@@ -143,7 +143,10 @@ async function fetchWithRetry(
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), options.timeout || _config.timeout);
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        options.timeout || _config.timeout,
+      );
 
       const response = await fetch(url, {
         method: options.method,
@@ -167,7 +170,12 @@ async function fetchWithRetry(
         } else {
           data = await response.text();
         }
-        return { ok: response.ok, status: response.status, data, headers: response.headers };
+        return {
+          ok: response.ok,
+          status: response.status,
+          data,
+          headers: response.headers,
+        };
       }
 
       lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -208,7 +216,7 @@ export function chatCompletion(
     stop: params.stop,
   });
 
-  async function execute() {
+  async function execute(): Promise<void> {
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -225,7 +233,9 @@ export function chatCompletion(
         let errorMsg = `API error ${response.status}`;
         try {
           const errData = await response.json();
-          errorMsg = (errData as { error?: { message?: string } }).error?.message || errorMsg;
+          errorMsg =
+            (errData as { error?: { message?: string } }).error?.message ||
+            errorMsg;
         } catch {
           // ignore parse error
         }
@@ -263,7 +273,10 @@ export function chatCompletion(
           // Handle custom events
           if (parsed.eventType === "hermes.tool.progress") {
             // Tool progress - emit as chunk with special marker
-            cb.onChunk({ delta: `{{tool_progress:${parsed.data}}}`, done: false });
+            cb.onChunk({
+              delta: `{{tool_progress:${parsed.data}}}`,
+              done: false,
+            });
             continue;
           }
 
@@ -288,7 +301,9 @@ export function chatCompletion(
 
           // Extract error
           if (parsedData.error) {
-            const errMsg = (parsedData.error as { message?: string }).message || "Unknown error";
+            const errMsg =
+              (parsedData.error as { message?: string }).message ||
+              "Unknown error";
             if (!finished) {
               finished = true;
               cb.onError(errMsg);
@@ -297,14 +312,18 @@ export function chatCompletion(
           }
 
           // Extract content delta
-          const delta = (parsedData.choices as Array<{ delta?: { content?: string } }>)?.[0]?.delta;
+          const delta = (
+            parsedData.choices as Array<{ delta?: { content?: string } }>
+          )?.[0]?.delta;
           if (delta?.content) {
             cb.onChunk({ delta: delta.content, done: false });
           }
 
           // Extract usage
           if (parsedData.usage) {
-            const usage = parseRemoteUsage(parsedData.usage as Record<string, unknown>);
+            const usage = parseRemoteUsage(
+              parsedData.usage as Record<string, unknown>,
+            );
             cb.onChunk({
               delta: "",
               done: false,
@@ -411,7 +430,9 @@ export interface ReportUsageResult {
 /**
  * Report token usage to the XCT Cloud for billing/metering.
  */
-export async function reportUsage(usage: UsageReport): Promise<ReportUsageResult> {
+export async function reportUsage(
+  usage: UsageReport,
+): Promise<ReportUsageResult> {
   try {
     const result = await fetchWithRetry(
       `${_config.baseUrl}/usage`,

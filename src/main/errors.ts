@@ -38,7 +38,11 @@ const STATUS_CODE_MAP: Record<string, number> = {
 };
 
 export class PaymentError extends AppError {
-  constructor(message: string, code: string, context?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    code: string,
+    context?: Record<string, unknown>,
+  ) {
     const statusCode = STATUS_CODE_MAP[code] ?? 400;
     super(message, `PAYMENT_${code}`, statusCode, false, context);
     this.name = "PaymentError";
@@ -87,8 +91,7 @@ function calculateDelay(
   config: Required<RetryConfig>,
 ): number {
   const exponentialDelay =
-    config.initialDelayMs *
-    Math.pow(config.backoffMultiplier, attempt - 1);
+    config.initialDelayMs * Math.pow(config.backoffMultiplier, attempt - 1);
 
   const cappedDelay = Math.min(exponentialDelay, config.maxDelayMs);
 
@@ -191,7 +194,11 @@ export function getUserErrorMessage(error: unknown): string {
       }
     }
 
-    if (msg.includes("network") || msg.includes("timeout") || msg.includes("connreset")) {
+    if (
+      msg.includes("network") ||
+      msg.includes("timeout") ||
+      msg.includes("connreset")
+    ) {
       return "Network error. Please try again.";
     }
 
@@ -218,10 +225,7 @@ export function ok<T>(data: T): ApiResponse<T> {
   return { success: true, data };
 }
 
-export function fail<T>(
-  code: string,
-  message: string,
-): ApiResponse<T> {
+export function fail<T>(code: string, message: string): ApiResponse<T> {
   return { success: false, error: { code, message } };
 }
 

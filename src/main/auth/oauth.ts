@@ -10,10 +10,10 @@
  * and tracks pending state via a tiny in-memory map.
  */
 
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes } from "crypto";
 
 /** Custom URL scheme registered via app.setAsDefaultProtocolClient(). */
-export const CUSTOM_PROTOCOL = 'xct-agent';
+export const CUSTOM_PROTOCOL = "xct-agent";
 export const CALLBACK_URL = `${CUSTOM_PROTOCOL}://auth/callback`;
 
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -22,7 +22,7 @@ export interface PendingOAuth {
   state: string;
   code_verifier: string;
   expires_at: number; // ms
-  provider: 'google';
+  provider: "google";
 }
 
 export function generateCodeVerifier(): string {
@@ -38,22 +38,22 @@ export function generateState(): string {
  * S256 PKCE: code_challenge = base64url(sha256(verifier)).
  */
 export function deriveCodeChallenge(verifier: string): string {
-  return base64url(createHash('sha256').update(verifier).digest());
+  return base64url(createHash("sha256").update(verifier).digest());
 }
 
 export function buildAuthorizeUrl(params: {
   authApiUrl: string;
-  provider: 'google';
+  provider: "google";
   state: string;
   code_challenge: string;
   redirect_to?: string;
 }): string {
-  const u = new URL('/authorize', params.authApiUrl.replace(/\/+$/, ''));
-  u.searchParams.set('provider', params.provider);
-  u.searchParams.set('state', params.state);
-  u.searchParams.set('code_challenge', params.code_challenge);
-  u.searchParams.set('code_challenge_method', 'S256');
-  u.searchParams.set('redirect_to', params.redirect_to ?? CALLBACK_URL);
+  const u = new URL("/authorize", params.authApiUrl.replace(/\/+$/, ""));
+  u.searchParams.set("provider", params.provider);
+  u.searchParams.set("state", params.state);
+  u.searchParams.set("code_challenge", params.code_challenge);
+  u.searchParams.set("code_challenge_method", "S256");
+  u.searchParams.set("redirect_to", params.redirect_to ?? CALLBACK_URL);
   return u.toString();
 }
 
@@ -77,7 +77,7 @@ export interface ParsedCallback {
 export function parseCallbackUrl(rawUrl: string): ParsedCallback {
   const url = new URL(rawUrl);
   const query = url.searchParams;
-  const fragment = new URLSearchParams(url.hash.replace(/^#/, ''));
+  const fragment = new URLSearchParams(url.hash.replace(/^#/, ""));
 
   const pickStr = (key: string): string | null => {
     const fromFrag = fragment.get(key);
@@ -86,17 +86,17 @@ export function parseCallbackUrl(rawUrl: string): ParsedCallback {
     return fromQuery || null;
   };
 
-  const expiresAtRaw = pickStr('expires_at');
-  const expiresInRaw = pickStr('expires_in');
+  const expiresAtRaw = pickStr("expires_at");
+  const expiresInRaw = pickStr("expires_in");
 
   return {
-    state: pickStr('state'),
-    access_token: pickStr('access_token'),
-    refresh_token: pickStr('refresh_token'),
+    state: pickStr("state"),
+    access_token: pickStr("access_token"),
+    refresh_token: pickStr("refresh_token"),
     expires_at: expiresAtRaw ? Number(expiresAtRaw) : null,
     expires_in: expiresInRaw ? Number(expiresInRaw) : null,
-    error: pickStr('error'),
-    error_description: pickStr('error_description'),
+    error: pickStr("error"),
+    error_description: pickStr("error_description"),
   };
 }
 
@@ -114,7 +114,7 @@ export class PendingOAuthStore {
     this.maxSize = opts.maxSize ?? 5;
   }
 
-  start(provider: 'google'): PendingOAuth {
+  start(provider: "google"): PendingOAuth {
     const code_verifier = generateCodeVerifier();
     const state = generateState();
     const entry: PendingOAuth = {
@@ -161,5 +161,9 @@ export class PendingOAuthStore {
 }
 
 function base64url(buf: Buffer): string {
-  return buf.toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+  return buf
+    .toString("base64")
+    .replace(/=+$/, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
 }

@@ -23,7 +23,9 @@ let listeners: Array<(v: AuthSessionView) => void>;
 let session: AuthSessionView;
 let api: Record<string, ReturnType<typeof vi.fn>>;
 
-async function render(ui: React.ReactElement): Promise<ReturnType<typeof rtlRender>> {
+async function render(
+  ui: React.ReactElement,
+): Promise<ReturnType<typeof rtlRender>> {
   let result!: ReturnType<typeof rtlRender>;
   await act(async () => {
     result = rtlRender(<I18nProvider>{ui}</I18nProvider>);
@@ -73,8 +75,12 @@ describe("LoginPromptModal", () => {
       user_id: "u",
       expires_at: 1700000000,
     };
-    const { container } = await render(<LoginPromptModal onChooseAuth={() => {}} />);
-    await waitFor(() => expect(container.querySelector(".login-prompt-card")).toBeNull());
+    const { container } = await render(
+      <LoginPromptModal onChooseAuth={() => {}} />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector(".login-prompt-card")).toBeNull(),
+    );
   });
 
   it("renders modal when anonymous, then dismisses on Continue", async () => {
@@ -109,7 +115,9 @@ describe("LoginPromptModal", () => {
 describe("UserMenu", () => {
   it("shows Sign in button when anonymous", async () => {
     await render(<UserMenu onSignInClick={() => {}} />);
-    await waitFor(() => expect(screen.getByText(/sign in/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/sign in/i)).toBeInTheDocument(),
+    );
   });
 
   it("calls onSignInClick when Sign-in clicked anonymously", async () => {

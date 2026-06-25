@@ -169,7 +169,9 @@ describe("GATEWAY_SECTIONS", () => {
 describe("SETTINGS_SECTIONS", () => {
   it("includes LLM Providers section", () => {
     expect(
-      SETTINGS_SECTIONS.find((s) => s.title === "constants.sectionLlmProviders"),
+      SETTINGS_SECTIONS.find(
+        (s) => s.title === "constants.sectionLlmProviders",
+      ),
     ).toBeTruthy();
   });
 

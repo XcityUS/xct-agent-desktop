@@ -56,7 +56,8 @@ const hermesAPI = {
   runClawMigrate: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("run-claw-migrate"),
 
-  getLocale: (): Promise<"en" | "es" | "zh-CN"> => ipcRenderer.invoke("get-locale"),
+  getLocale: (): Promise<"en" | "es" | "zh-CN"> =>
+    ipcRenderer.invoke("get-locale"),
   setLocale: (locale: "en" | "es" | "zh-CN"): Promise<"en" | "es" | "zh-CN"> =>
     ipcRenderer.invoke("set-locale", locale),
 
@@ -78,8 +79,12 @@ const hermesAPI = {
 
   getModelConfig: (
     profile?: string,
-  ): Promise<{ provider: string; model: string; baseUrl: string; apiKey: string }> =>
-    ipcRenderer.invoke("get-model-config", profile),
+  ): Promise<{
+    provider: string;
+    model: string;
+    baseUrl: string;
+    apiKey: string;
+  }> => ipcRenderer.invoke("get-model-config", profile),
 
   setModelConfig: (
     provider: string,
@@ -88,7 +93,14 @@ const hermesAPI = {
     apiKey: string,
     profile?: string,
   ): Promise<boolean> =>
-    ipcRenderer.invoke("set-model-config", provider, model, baseUrl, apiKey, profile),
+    ipcRenderer.invoke(
+      "set-model-config",
+      provider,
+      model,
+      baseUrl,
+      apiKey,
+      profile,
+    ),
 
   // Connection mode (local vs remote)
   isRemoteMode: (): Promise<boolean> => ipcRenderer.invoke("is-remote-mode"),

@@ -1,5 +1,11 @@
 import { useCallback, useState } from "react";
-import { Mail, Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import {
+  Mail,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  ArrowLeft,
+} from "lucide-react";
 import { useI18n } from "../../components/useI18n";
 import { authErrorKey } from "./authError";
 import { AuthScreenStyles } from "./SignInScreen";
@@ -73,7 +79,9 @@ export default function ForgotPasswordScreen({
 
       <form className="auth-form" onSubmit={onSubmit}>
         <label className="auth-label">
-          <span className="auth-icon"><Mail size={16} /></span>
+          <span className="auth-icon">
+            <Mail size={16} />
+          </span>
           <input
             type="email"
             className="input"
@@ -92,9 +100,15 @@ export default function ForgotPasswordScreen({
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary auth-submit" disabled={busy}>
+        <button
+          type="submit"
+          className="btn btn-primary auth-submit"
+          disabled={busy}
+        >
           {busy ? (
-            <><Loader2 size={14} className="spin" /> {t("auth.forgotLoading")}</>
+            <>
+              <Loader2 size={14} className="spin" /> {t("auth.forgotLoading")}
+            </>
           ) : (
             t("auth.forgotSubmit")
           )}

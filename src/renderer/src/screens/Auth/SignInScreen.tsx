@@ -71,7 +71,9 @@ export default function SignInScreen({
 
       <form className="auth-form" onSubmit={onSubmit}>
         <label className="auth-label">
-          <span className="auth-icon"><Mail size={16} /></span>
+          <span className="auth-icon">
+            <Mail size={16} />
+          </span>
           <input
             type="email"
             className="input"
@@ -84,7 +86,9 @@ export default function SignInScreen({
         </label>
 
         <label className="auth-label">
-          <span className="auth-icon"><Lock size={16} /></span>
+          <span className="auth-icon">
+            <Lock size={16} />
+          </span>
           <input
             type="password"
             className="input"
@@ -109,7 +113,9 @@ export default function SignInScreen({
           disabled={busy !== null}
         >
           {busy === "password" ? (
-            <><Loader2 size={14} className="spin" /> {t("auth.signInLoading")}</>
+            <>
+              <Loader2 size={14} className="spin" /> {t("auth.signInLoading")}
+            </>
           ) : (
             t("auth.signInSubmit")
           )}
@@ -123,9 +129,14 @@ export default function SignInScreen({
             disabled={busy !== null}
           >
             {busy === "google" ? (
-              <><Loader2 size={14} className="spin" /> {t("auth.signInGoogleLoading")}</>
+              <>
+                <Loader2 size={14} className="spin" />{" "}
+                {t("auth.signInGoogleLoading")}
+              </>
             ) : (
-              <><GoogleIcon /> {t("auth.signInGoogle")}</>
+              <>
+                <GoogleIcon /> {t("auth.signInGoogle")}
+              </>
             )}
           </button>
         )}
@@ -159,12 +170,7 @@ export default function SignInScreen({
 function GoogleIcon(): React.JSX.Element {
   // Multi-color Google "G" rendered inline; no external asset needed.
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 18 18"
-      style={{ marginRight: 6 }}
-    >
+    <svg width="14" height="14" viewBox="0 0 18 18" style={{ marginRight: 6 }}>
       <path
         fill="#EA4335"
         d="M9 3.48c1.69 0 2.85.73 3.51 1.34l2.57-2.51C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l2.91 2.26C4.6 5.05 6.62 3.48 9 3.48z"

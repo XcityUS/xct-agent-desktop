@@ -45,7 +45,8 @@ export default {
   errorInvalidEmail: "Introduce un correo válido.",
   errorEmailRequired: "El correo es obligatorio.",
   errorPasswordRequired: "La contraseña es obligatoria.",
-  errorOauthStateExpired: "El inicio de sesión tardó demasiado. Inténtalo de nuevo.",
+  errorOauthStateExpired:
+    "El inicio de sesión tardó demasiado. Inténtalo de nuevo.",
   errorOauthCancelled: "Se canceló el inicio de sesión.",
   errorUnknown: "Algo salió mal. Inténtalo de nuevo.",
   promptTitle: "Inicia sesión en Xcity",

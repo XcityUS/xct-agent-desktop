@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Cloud, CloudOff, Loader2, CheckCircle, XCircle, Zap, AlertCircle } from "lucide-react";
+import {
+  Cloud,
+  CloudOff,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Zap,
+  AlertCircle,
+} from "lucide-react";
 
 export type CloudConnectionStatus =
   | "connected"
@@ -21,13 +29,14 @@ function CloudModeToggle({
   const [mode, setMode] = useState<"local" | "remote">("local");
   const [remoteUrl, setRemoteUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [status, setStatus] =
-    useState<CloudConnectionStatus>("disconnected");
+  const [status, setStatus] = useState<CloudConnectionStatus>("disconnected");
   const [testing, setTesting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
-  const [transitionDirection, setTransitionDirection] = useState<"to-cloud" | "to-local" | null>(null);
+  const [transitionDirection, setTransitionDirection] = useState<
+    "to-cloud" | "to-local" | null
+  >(null);
   const [errorShake, setErrorShake] = useState(false);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -90,16 +99,16 @@ function CloudModeToggle({
   const handleModeToggle = useCallback(
     async (newMode: "local" | "remote") => {
       if (newMode === mode) return; // No change needed
-      
+
       // Start transition animation
       setTransitioning(true);
       setTransitionDirection(newMode === "remote" ? "to-cloud" : "to-local");
-      
+
       // Clear any existing timer
       if (transitionTimerRef.current) {
         clearTimeout(transitionTimerRef.current);
       }
-      
+
       // Set transition timer for animation
       transitionTimerRef.current = setTimeout(() => {
         setTransitioning(false);
@@ -123,7 +132,7 @@ function CloudModeToggle({
     setShowConfig(false);
     setTransitioning(true);
     setTransitionDirection("to-cloud");
-    
+
     if (transitionTimerRef.current) {
       clearTimeout(transitionTimerRef.current);
     }
@@ -131,7 +140,7 @@ function CloudModeToggle({
       setTransitioning(false);
       setTransitionDirection(null);
     }, 400);
-    
+
     await window.hermesAPI.setConnectionConfig(mode, remoteUrl, apiKey);
     setStatus("connecting");
     onModeChange?.("remote");
@@ -146,13 +155,33 @@ function CloudModeToggle({
   const StatusIcon = (): React.JSX.Element => {
     switch (status) {
       case "connected":
-        return <CheckCircle size={14} className="cloud-toggle-status-icon cloud-toggle-status--connected" />;
+        return (
+          <CheckCircle
+            size={14}
+            className="cloud-toggle-status-icon cloud-toggle-status--connected"
+          />
+        );
       case "connecting":
-        return <Loader2 size={14} className="cloud-toggle-status-icon cloud-toggle-status--connecting" />;
+        return (
+          <Loader2
+            size={14}
+            className="cloud-toggle-status-icon cloud-toggle-status--connecting"
+          />
+        );
       case "error":
-        return <XCircle size={14} className="cloud-toggle-status-icon cloud-toggle-status--error" />;
+        return (
+          <XCircle
+            size={14}
+            className="cloud-toggle-status-icon cloud-toggle-status--error"
+          />
+        );
       default:
-        return <CloudOff size={14} className="cloud-toggle-status-icon cloud-toggle-status--disconnected" />;
+        return (
+          <CloudOff
+            size={14}
+            className="cloud-toggle-status-icon cloud-toggle-status--disconnected"
+          />
+        );
     }
   };
 
@@ -172,17 +201,17 @@ function CloudModeToggle({
   if (compact) {
     // Compact inline toggle for header/sidebar use
     return (
-      <div className={`cloud-toggle-compact ${transitioning ? "cloud-toggle-compact--transitioning" : ""}`}>
+      <div
+        className={`cloud-toggle-compact ${transitioning ? "cloud-toggle-compact--transitioning" : ""}`}
+      >
         <button
           className={`cloud-toggle-mode-btn ${mode === "local" ? "active" : ""} ${transitionDirection === "to-cloud" ? "transitioning-to-cloud" : ""} ${transitionDirection === "to-local" ? "transitioning-to-local" : ""}`}
-          onClick={() => handleModeToggle(mode === "local" ? "remote" : "local")}
+          onClick={() =>
+            handleModeToggle(mode === "local" ? "remote" : "local")
+          }
           title={`Switch to ${mode === "local" ? "cloud" : "local"} mode`}
         >
-          {mode === "local" ? (
-            <CloudOff size={14} />
-          ) : (
-            <Cloud size={14} />
-          )}
+          {mode === "local" ? <CloudOff size={14} /> : <Cloud size={14} />}
         </button>
         <StatusIcon />
       </div>
@@ -190,7 +219,9 @@ function CloudModeToggle({
   }
 
   return (
-    <div className={`cloud-toggle ${transitioning ? "cloud-toggle--transitioning" : ""} ${errorShake ? "cloud-toggle--error-shake" : ""} ${transitionDirection === "to-cloud" ? "cloud-toggle--to-cloud" : ""} ${transitionDirection === "to-local" ? "cloud-toggle--to-local" : ""}`}>
+    <div
+      className={`cloud-toggle ${transitioning ? "cloud-toggle--transitioning" : ""} ${errorShake ? "cloud-toggle--error-shake" : ""} ${transitionDirection === "to-cloud" ? "cloud-toggle--to-cloud" : ""} ${transitionDirection === "to-local" ? "cloud-toggle--to-local" : ""}`}
+    >
       <div className="cloud-toggle-header">
         <div className="cloud-toggle-title">
           {mode === "local" ? <CloudOff size={16} /> : <Cloud size={16} />}
@@ -203,13 +234,17 @@ function CloudModeToggle({
         </div>
         <div className="cloud-toggle-status">
           <StatusIcon />
-          <span className={`cloud-toggle-status-text cloud-toggle-status--${status}`}>
+          <span
+            className={`cloud-toggle-status-text cloud-toggle-status--${status}`}
+          >
             {statusLabel()}
           </span>
         </div>
       </div>
 
-      <div className={`cloud-toggle-modes ${transitioning ? "cloud-toggle-modes--transitioning" : ""}`}>
+      <div
+        className={`cloud-toggle-modes ${transitioning ? "cloud-toggle-modes--transitioning" : ""}`}
+      >
         <button
           className={`cloud-toggle-mode-btn ${mode === "local" ? "active" : ""} ${transitionDirection === "to-local" ? "cloud-toggle-mode-btn--switching" : ""}`}
           onClick={() => handleModeToggle("local")}
@@ -235,7 +270,9 @@ function CloudModeToggle({
       </div>
 
       {showConfig && mode === "remote" && (
-        <div className={`cloud-toggle-config ${transitioning ? "cloud-toggle-config--hidden" : ""}`}>
+        <div
+          className={`cloud-toggle-config ${transitioning ? "cloud-toggle-config--hidden" : ""}`}
+        >
           <div className="cloud-toggle-config-inner">
             <div className="cloud-toggle-field">
               <label>Remote URL</label>
@@ -288,7 +325,7 @@ function CloudModeToggle({
           <span>{statusMessage}</span>
         </div>
       )}
-      
+
       {/* Connection progress indicator */}
       {status === "connecting" && (
         <div className="cloud-toggle-progress">
