@@ -21,4 +21,9 @@ export default {
   installedBadge: "Installed",
   installing: "Installing...",
   install: "Install",
+  tokenhubTab: "Tokenhub",
+  tokenhubFailed: "Couldn't reach the Tokenhub registry",
+  noTokenhubResults: "No skills found in the Tokenhub registry",
+  noTokenhubResultsHint:
+    "Sign in to xcity.one or try a different search term",
 } as const;

@@ -66,3 +66,24 @@ export const RECHARGE_PACKS = [
 ] as const;
 
 export type RechargePackId = (typeof RECHARGE_PACKS)[number]['id'];
+
+/**
+ * Per-agent usage telemetry posted by the desktop app to the wallet service.
+ * The wallet aggregates this for the per-agent spend breakdown in xcity.one.
+ *
+ * `agent` is the profile name (Hermes profile == "agent" in the UI). `tokens`
+ * and `cost_usd` come from the upstream LiteLLM response and are best-effort —
+ * the server treats missing fields as zero.
+ */
+export interface AgentUsageReport {
+  agent: string;
+  model?: string;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  cost_usd?: number;
+  /** ISO timestamp; server defaults to now() when omitted. */
+  at?: string;
+  /** Optional Hermes session id, for joining with backend logs. */
+  session_id?: string;
+}

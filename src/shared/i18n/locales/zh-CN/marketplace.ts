@@ -1,0 +1,15 @@
+export default {
+  title: "Agent 市场",
+  subtitle: "在本机浏览并启用 Tokenhub 上的智能体",
+  refresh: "刷新",
+  search: "搜索智能体...",
+  all: "全部",
+  empty: "未找到智能体",
+  emptyHint: "试试其他搜索词或分类",
+  byAuthor: "作者：{{author}}",
+  active: "使用中",
+  use: "切换",
+  enable: "启用",
+  enabling: "启用中...",
+  enableFailed: "启用智能体失败",
+} as const;

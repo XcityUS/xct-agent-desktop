@@ -252,6 +252,15 @@ function Chat({
   // Keep ref in sync for use in IPC callbacks
   isLoadingRef.current = isLoading;
 
+  // Refs read inside long-lived IPC callbacks — avoid re-registering the
+  // chat-usage listener every render just to capture fresh profile / session.
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const hermesSessionIdRef = useRef(hermesSessionId);
+  hermesSessionIdRef.current = hermesSessionId;
+  const currentModelRef = useRef(currentModel);
+  currentModelRef.current = currentModel;
+
   // Filtered slash commands based on current input
   const filteredSlashCommands = useMemo(
     () =>
@@ -439,6 +448,23 @@ function Chat({
         totalTokens: (prev?.totalTokens || 0) + u.totalTokens,
         cost: u.cost != null ? (prev?.cost || 0) + u.cost : prev?.cost,
       }));
+
+      // Fire-and-forget per-agent telemetry to the wallet. Failures (e.g.
+      // wallet_not_connected) are swallowed in main; nothing here should
+      // ever block the chat loop on a wallet hiccup.
+      window.hermesAPI
+        .walletReportAgentUsage({
+          agent: profileRef.current ?? "default",
+          model: currentModelRef.current || undefined,
+          prompt_tokens: u.promptTokens,
+          completion_tokens: u.completionTokens,
+          total_tokens: u.totalTokens,
+          cost_usd: u.cost,
+          session_id: hermesSessionIdRef.current ?? undefined,
+        })
+        .catch(() => {
+          /* best-effort */
+        });
     });
 
     return () => {

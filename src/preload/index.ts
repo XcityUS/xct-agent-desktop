@@ -665,6 +665,17 @@ const hermesAPI = {
   walletClearJwt: (): Promise<
     { ok: true } | { ok: false; error: string; status?: number }
   > => ipcRenderer.invoke("wallet-clear-jwt"),
+  walletReportAgentUsage: (report: {
+    agent: string;
+    model?: string;
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    cost_usd?: number;
+    at?: string;
+    session_id?: string;
+  }): Promise<{ ok: true } | { ok: false; error: string; status?: number }> =>
+    ipcRenderer.invoke("wallet-report-agent-usage", report),
 
   // ── Auth (GoTrue at auth.xcity.one) ──────────────────────────────────
   authGetSession: (): Promise<AuthSessionView> =>

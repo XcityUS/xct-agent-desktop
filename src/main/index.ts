@@ -744,6 +744,23 @@ function setupIPC(): void {
       return mapWalletError(e);
     }
   });
+  ipcMain.handle(
+    "wallet-report-agent-usage",
+    async (_event, report: walletApi.AgentUsageReport) => {
+      try {
+        await walletApi.reportAgentUsage(report);
+        return { ok: true as const };
+      } catch (e) {
+        // Usage reporting is best-effort — never surface the error to the
+        // chat loop. The wallet sees gateway-side spend regardless; the
+        // per-agent breakdown is a nice-to-have on top.
+        if (e instanceof walletApi.WalletNotConnectedError) {
+          return { ok: false as const, error: "wallet_not_connected" };
+        }
+        return mapWalletError(e);
+      }
+    },
+  );
 
   // ── Auth (GoTrue at auth.xcity.one) ────────────────────────────────────
   ipcMain.handle("auth-get-session", () => authApi.getSessionView());

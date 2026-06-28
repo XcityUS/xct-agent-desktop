@@ -1,0 +1,15 @@
+export default {
+  title: "Agent Marketplace",
+  subtitle: "Browse and enable Tokenhub agents on this device",
+  refresh: "Refresh",
+  search: "Search agents...",
+  all: "All",
+  empty: "No agents found",
+  emptyHint: "Try a different search term or category",
+  byAuthor: "by {{author}}",
+  active: "Active",
+  use: "Use",
+  enable: "Enable",
+  enabling: "Enabling...",
+  enableFailed: "Failed to enable agent",
+} as const;

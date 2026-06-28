@@ -455,6 +455,9 @@ interface HermesAPI {
   walletClearJwt: () => Promise<
     { ok: true } | { ok: false; error: string; status?: number }
   >;
+  walletReportAgentUsage: (report: AgentUsageReport) => Promise<
+    { ok: true } | { ok: false; error: string; status?: number }
+  >;
 
   // Auth (GoTrue at auth.xcity.one)
   authGetSession: () => Promise<AuthSessionView>;
@@ -528,6 +531,17 @@ interface WalletOrder {
   payment_method: WalletPaymentMethod | null;
   created_at: string;
   completed_at: string | null;
+}
+
+interface AgentUsageReport {
+  agent: string;
+  model?: string;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  cost_usd?: number;
+  at?: string;
+  session_id?: string;
 }
 
 declare global {

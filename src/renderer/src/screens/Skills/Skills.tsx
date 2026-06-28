@@ -2,6 +2,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X, Download, Trash, Refresh } from "../../assets/icons";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { useI18n } from "../../components/useI18n";
+import {
+  listTokenhubSkills,
+  type TokenhubSkill,
+} from "../../lib/tokenhub-client";
 
 interface InstalledSkill {
   name: string;
@@ -22,13 +26,16 @@ interface SkillsProps {
   profile?: string;
 }
 
-type Tab = "installed" | "browse";
+type Tab = "installed" | "browse" | "tokenhub";
 
 function Skills({ profile }: SkillsProps): React.JSX.Element {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("installed");
   const [installedSkills, setInstalledSkills] = useState<InstalledSkill[]>([]);
   const [bundledSkills, setBundledSkills] = useState<BundledSkill[]>([]);
+  const [tokenhubSkills, setTokenhubSkills] = useState<TokenhubSkill[]>([]);
+  const [tokenhubError, setTokenhubError] = useState<string | null>(null);
+  const [tokenhubLoading, setTokenhubLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,11 +55,35 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
     setBundledSkills(list);
   }, []);
 
+  // Tokenhub fetch is lazy + isolated: loadAll() never blocks on it because
+  // the registry lives behind xcity-home auth (the user may not be signed
+  // in) and a slow Tokenhub call would gate the whole Skills screen.
+  const loadTokenhub = useCallback(async (): Promise<void> => {
+    setTokenhubLoading(true);
+    setTokenhubError(null);
+    try {
+      const list = await listTokenhubSkills();
+      setTokenhubSkills(list);
+    } catch (e) {
+      setTokenhubError(e instanceof Error ? e.message : String(e));
+      setTokenhubSkills([]);
+    } finally {
+      setTokenhubLoading(false);
+    }
+  }, []);
+
   const loadAll = useCallback(async (): Promise<void> => {
     setLoading(true);
     await Promise.all([loadInstalled(), loadBundled()]);
     setLoading(false);
   }, [loadInstalled, loadBundled]);
+
+  // Fetch Tokenhub the first time the user clicks the tab.
+  useEffect(() => {
+    if (tab === "tokenhub" && tokenhubSkills.length === 0 && !tokenhubLoading) {
+      loadTokenhub();
+    }
+  }, [tab, tokenhubSkills.length, tokenhubLoading, loadTokenhub]);
 
   useEffect(() => {
     loadAll();
@@ -121,10 +152,30 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
     return matches;
   });
 
-  // Get unique categories for filter pills
-  const categories = Array.from(
+  const filteredTokenhub = tokenhubSkills.filter((s) => {
+    let matches = true;
+    if (search) {
+      const q = search.toLowerCase();
+      matches =
+        s.name.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q) ||
+        s.category.toLowerCase().includes(q);
+    }
+    if (categoryFilter) {
+      matches = matches && s.category === categoryFilter;
+    }
+    return matches;
+  });
+
+  // Get unique categories for filter pills. The browse tab pulls from
+  // bundled; the tokenhub tab uses its own registry categories.
+  const browseCategories = Array.from(
     new Set(bundledSkills.map((s) => s.category)),
   ).sort();
+  const tokenhubCategories = Array.from(
+    new Set(tokenhubSkills.map((s) => s.category)),
+  ).sort();
+  const categories = tab === "tokenhub" ? tokenhubCategories : browseCategories;
 
   if (loading) {
     return (
@@ -216,6 +267,13 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
         >
           {t("skills.browseTab")} ({bundledSkills.length})
         </button>
+        <button
+          className={`skills-tab ${tab === "tokenhub" ? "active" : ""}`}
+          onClick={() => setTab("tokenhub")}
+        >
+          {t("skills.tokenhubTab")}
+          {tokenhubSkills.length > 0 && ` (${tokenhubSkills.length})`}
+        </button>
       </div>
 
       {/* Search */}
@@ -246,8 +304,8 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
         )}
       </div>
 
-      {/* Category filter pills (browse tab only) */}
-      {tab === "browse" && categories.length > 0 && (
+      {/* Category filter pills (browse + tokenhub tabs) */}
+      {tab !== "installed" && categories.length > 0 && (
         <div className="skills-category-pills">
           <button
             className={`skills-pill ${categoryFilter === null ? "active" : ""}`}
@@ -270,8 +328,8 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
       )}
 
       {/* Grid */}
-      {tab === "installed" ? (
-        filteredInstalled.length === 0 ? (
+      {tab === "installed" &&
+        (filteredInstalled.length === 0 ? (
           <div className="skills-empty">
             <p className="skills-empty-text">
               {search
@@ -302,58 +360,157 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
               </button>
             ))}
           </div>
-        )
-      ) : filteredBundled.length === 0 ? (
-        <div className="skills-empty">
-          <p className="skills-empty-text">{t("skills.noBrowseResults")}</p>
-          <p className="skills-empty-hint">{t("skills.noBrowseResultsHint")}</p>
-        </div>
-      ) : (
-        <div className="skills-grid">
-          {filteredBundled.map((skill) => {
-            const isInstalled = installedNames.has(skill.name.toLowerCase());
-            const isActioning = actionInProgress === skill.name;
-            return (
-              <div
-                key={`${skill.category}/${skill.name}`}
-                className="skills-card"
-              >
-                <div className="skills-card-category">{skill.category}</div>
-                <div className="skills-card-name">{skill.name}</div>
-                {skill.description && (
-                  <div className="skills-card-description">
-                    {skill.description}
-                  </div>
-                )}
-                <div className="skills-card-footer">
-                  {isInstalled ? (
-                    <span className="skills-card-installed-badge">
-                      {t("skills.installedBadge")}
-                    </span>
-                  ) : (
-                    <button
-                      className="btn btn-primary btn-sm skills-card-install-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleInstall(skill.name);
-                      }}
-                      disabled={isActioning}
-                    >
-                      {isActioning ? (
-                        t("skills.installing")
-                      ) : (
-                        <>
-                          <Download size={13} />
-                          {t("skills.install")}
-                        </>
-                      )}
-                    </button>
+        ))}
+
+      {tab === "browse" &&
+        (filteredBundled.length === 0 ? (
+          <div className="skills-empty">
+            <p className="skills-empty-text">
+              {t("skills.noBrowseResults")}
+            </p>
+            <p className="skills-empty-hint">
+              {t("skills.noBrowseResultsHint")}
+            </p>
+          </div>
+        ) : (
+          <div className="skills-grid">
+            {filteredBundled.map((skill) => {
+              const isInstalled = installedNames.has(
+                skill.name.toLowerCase(),
+              );
+              const isActioning = actionInProgress === skill.name;
+              return (
+                <div
+                  key={`${skill.category}/${skill.name}`}
+                  className="skills-card"
+                >
+                  <div className="skills-card-category">{skill.category}</div>
+                  <div className="skills-card-name">{skill.name}</div>
+                  {skill.description && (
+                    <div className="skills-card-description">
+                      {skill.description}
+                    </div>
                   )}
+                  <div className="skills-card-footer">
+                    {isInstalled ? (
+                      <span className="skills-card-installed-badge">
+                        {t("skills.installedBadge")}
+                      </span>
+                    ) : (
+                      <button
+                        className="btn btn-primary btn-sm skills-card-install-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleInstall(skill.name);
+                        }}
+                        disabled={isActioning}
+                      >
+                        {isActioning ? (
+                          t("skills.installing")
+                        ) : (
+                          <>
+                            <Download size={13} />
+                            {t("skills.install")}
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        ))}
+
+      {tab === "tokenhub" && (
+        <>
+          {tokenhubLoading && (
+            <div className="skills-loading">
+              <div className="loading-spinner" />
+            </div>
+          )}
+
+          {!tokenhubLoading && tokenhubError && (
+            <div className="skills-empty">
+              <p className="skills-empty-text">
+                {t("skills.tokenhubFailed")}
+              </p>
+              <p className="skills-empty-hint">{tokenhubError}</p>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={loadTokenhub}
+                style={{ marginTop: 12 }}
+              >
+                <Refresh size={14} />
+                {t("skills.refresh")}
+              </button>
+            </div>
+          )}
+
+          {!tokenhubLoading &&
+            !tokenhubError &&
+            (filteredTokenhub.length === 0 ? (
+              <div className="skills-empty">
+                <p className="skills-empty-text">
+                  {t("skills.noTokenhubResults")}
+                </p>
+                <p className="skills-empty-hint">
+                  {t("skills.noTokenhubResultsHint")}
+                </p>
               </div>
-            );
-          })}
-        </div>
+            ) : (
+              <div className="skills-grid">
+                {filteredTokenhub.map((skill) => {
+                  const identifier = skill.install_id || skill.id;
+                  const isInstalled = installedNames.has(
+                    skill.name.toLowerCase(),
+                  );
+                  const isActioning = actionInProgress === identifier;
+                  return (
+                    <div
+                      key={`tokenhub/${skill.id}`}
+                      className="skills-card"
+                    >
+                      <div className="skills-card-category">
+                        {skill.category}
+                      </div>
+                      <div className="skills-card-name">{skill.name}</div>
+                      {skill.description && (
+                        <div className="skills-card-description">
+                          {skill.description}
+                        </div>
+                      )}
+                      <div className="skills-card-footer">
+                        {isInstalled ? (
+                          <span className="skills-card-installed-badge">
+                            {t("skills.installedBadge")}
+                          </span>
+                        ) : (
+                          <button
+                            className="btn btn-primary btn-sm skills-card-install-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleInstall(identifier);
+                            }}
+                            disabled={isActioning}
+                          >
+                            {isActioning ? (
+                              t("skills.installing")
+                            ) : (
+                              <>
+                                <Download size={13} />
+                                {t("skills.install")}
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+        </>
       )}
     </div>
   );

@@ -21,4 +21,9 @@ export default {
   installedBadge: "Instalada",
   installing: "Instalando...",
   install: "Instalar",
+  tokenhubTab: "Tokenhub",
+  tokenhubFailed: "No se pudo conectar al registro de Tokenhub",
+  noTokenhubResults: "No se encontraron habilidades en el registro de Tokenhub",
+  noTokenhubResultsHint:
+    "Inicia sesión en xcity.one o prueba con otro término de búsqueda",
 } as const;
