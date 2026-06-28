@@ -20,4 +20,8 @@ export default {
   installedBadge: "已安装",
   installing: "安装中...",
   install: "安装",
+  tokenhubTab: "Tokenhub",
+  tokenhubFailed: "无法连接到 Tokenhub 注册中心",
+  noTokenhubResults: "Tokenhub 注册中心未找到技能",
+  noTokenhubResultsHint: "登录 xcity.one 或尝试其他搜索词",
 } as const;

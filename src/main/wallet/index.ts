@@ -19,6 +19,7 @@ import { getSecrets, getConfig, getCurrentEnv, patchSecrets } from '../config-ma
 import * as authApi from '../auth/index.js';
 import { WalletClient } from './client.js';
 import type {
+  AgentUsageReport,
   CheckoutSession,
   PaymentMethod,
   RechargePackId,
@@ -185,6 +186,13 @@ export async function setSpendCap(
   return (await getClient(deps)).setSpendCap(monthly_cap_usd);
 }
 
+export async function reportAgentUsage(
+  report: AgentUsageReport,
+  deps?: WalletDeps,
+): Promise<{ ok: true }> {
+  return (await getClient(deps)).reportAgentUsage(report);
+}
+
 /**
  * Whether a wallet JWT is configured. UI uses this to gate the recharge /
  * orders pages behind a "connect your wallet" CTA.
@@ -195,6 +203,7 @@ export function isConnected(deps?: WalletDeps): boolean {
 
 export { WalletApiError } from './client.js';
 export type {
+  AgentUsageReport,
   WalletBalance,
   WalletOrder,
   CheckoutSession,

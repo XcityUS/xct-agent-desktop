@@ -37,3 +37,4 @@ export { Square as Stop } from "lucide-react";
 export { Globe } from "lucide-react";
 export { Check } from "lucide-react";
 export { Loader2 as Spinner } from "lucide-react";
+export { Store } from "lucide-react";

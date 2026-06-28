@@ -1,0 +1,15 @@
+export default {
+  title: "Mercado de Agentes",
+  subtitle: "Explora y activa agentes de Tokenhub en este dispositivo",
+  refresh: "Actualizar",
+  search: "Buscar agentes...",
+  all: "Todos",
+  empty: "No se encontraron agentes",
+  emptyHint: "Prueba con otro término de búsqueda o categoría",
+  byAuthor: "por {{author}}",
+  active: "Activo",
+  use: "Usar",
+  enable: "Activar",
+  enabling: "Activando...",
+  enableFailed: "No se pudo activar el agente",
+} as const;

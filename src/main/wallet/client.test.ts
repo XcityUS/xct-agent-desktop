@@ -136,4 +136,31 @@ describe('WalletClient', () => {
     const headers = calls[0].init?.headers as Record<string, string>;
     expect(headers['Content-Type']).toBeUndefined();
   });
+
+  it('reportAgentUsage POSTs to /v1/usage/agent and tags source=desktop', async () => {
+    const { fetch, calls } = fakeFetch([{ body: { ok: true } }]);
+    const c = new WalletClient({ baseUrl: 'https://w', jwt: 't', fetch });
+    await c.reportAgentUsage({
+      agent: 'coder',
+      model: 'anthropic/claude-opus-4-7',
+      prompt_tokens: 1200,
+      completion_tokens: 400,
+      total_tokens: 1600,
+      cost_usd: 0.045,
+      session_id: 'sess_xyz',
+    });
+    expect(calls[0].url).toBe('https://w/v1/usage/agent');
+    expect(calls[0].init?.method).toBe('POST');
+    const body = JSON.parse(String(calls[0].init?.body));
+    expect(body).toMatchObject({
+      agent: 'coder',
+      model: 'anthropic/claude-opus-4-7',
+      prompt_tokens: 1200,
+      completion_tokens: 400,
+      total_tokens: 1600,
+      cost_usd: 0.045,
+      session_id: 'sess_xyz',
+      source: 'desktop',
+    });
+  });
 });

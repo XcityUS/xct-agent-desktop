@@ -22,6 +22,7 @@ import schedulesEn from "./locales/en/schedules";
 import skillsEn from "./locales/en/skills";
 import gatewayEn from "./locales/en/gateway";
 import agentsEn from "./locales/en/agents";
+import marketplaceEn from "./locales/en/marketplace";
 import soulEn from "./locales/en/soul";
 import memoryEn from "./locales/en/memory";
 import installEn from "./locales/en/install";
@@ -43,6 +44,7 @@ import schedulesEs from "./locales/es/schedules";
 import skillsEs from "./locales/es/skills";
 import gatewayEs from "./locales/es/gateway";
 import agentsEs from "./locales/es/agents";
+import marketplaceEs from "./locales/es/marketplace";
 import soulEs from "./locales/es/soul";
 import memoryEs from "./locales/es/memory";
 import installEs from "./locales/es/install";
@@ -64,6 +66,7 @@ import schedulesZh from "./locales/zh-CN/schedules";
 import skillsZh from "./locales/zh-CN/skills";
 import gatewayZh from "./locales/zh-CN/gateway";
 import agentsZh from "./locales/zh-CN/agents";
+import marketplaceZh from "./locales/zh-CN/marketplace";
 import soulZh from "./locales/zh-CN/soul";
 import memoryZh from "./locales/zh-CN/memory";
 import installZh from "./locales/zh-CN/install";
@@ -89,6 +92,7 @@ export const resources = {
       skills: skillsEn,
       gateway: gatewayEn,
       agents: agentsEn,
+      marketplace: marketplaceEn,
       soul: soulEn,
       memory: memoryEn,
       install: installEn,
@@ -114,6 +118,7 @@ export const resources = {
       skills: skillsEs,
       gateway: gatewayEs,
       agents: agentsEs,
+      marketplace: marketplaceEs,
       soul: soulEs,
       memory: memoryEs,
       install: installEs,
@@ -139,6 +144,7 @@ export const resources = {
       skills: skillsZh,
       gateway: gatewayZh,
       agents: agentsZh,
+      marketplace: marketplaceZh,
       soul: soulZh,
       memory: memoryZh,
       install: installZh,

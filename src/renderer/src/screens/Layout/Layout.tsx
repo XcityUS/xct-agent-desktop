@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import Chat, { ChatMessage } from "../Chat/Chat";
 import Sessions from "../Sessions/Sessions";
 import Agents from "../Agents/Agents";
+import Marketplace from "../Marketplace/Marketplace";
 import Settings from "../Settings/Settings";
 import Skills from "../Skills/Skills";
 import Soul from "../Soul/Soul";
@@ -33,6 +34,7 @@ import {
   Download,
   Wallet,
   Receipt,
+  Store,
 } from "../../assets/icons";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
@@ -43,6 +45,7 @@ type View =
   | "chat"
   | "sessions"
   | "agents"
+  | "marketplace"
   | "office"
   | "models"
   | "providers"
@@ -60,6 +63,7 @@ const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
   { view: "chat", icon: ChatBubble, labelKey: "navigation.chat" },
   { view: "sessions", icon: Clock, labelKey: "navigation.sessions" },
   { view: "agents", icon: Users, labelKey: "navigation.agents" },
+  { view: "marketplace", icon: Store, labelKey: "navigation.marketplace" },
   { view: "office", icon: Building, labelKey: "navigation.office" },
   { view: "models", icon: Layers, labelKey: "navigation.models" },
   { view: "providers", icon: KeyRound, labelKey: "navigation.providers" },
@@ -257,6 +261,18 @@ function Layout({ onSignInClick }: LayoutProps = {}): React.JSX.Element {
               activeProfile={activeProfile}
               onSelectProfile={handleSelectProfile}
               onChatWith={(name: string) => {
+                handleSelectProfile(name);
+                setView("chat");
+              }}
+            />
+          ))}
+        {view === "marketplace" &&
+          (remoteMode ? (
+            <RemoteNotice feature="Marketplace" />
+          ) : (
+            <Marketplace
+              activeProfile={activeProfile}
+              onEnabled={(name) => {
                 handleSelectProfile(name);
                 setView("chat");
               }}

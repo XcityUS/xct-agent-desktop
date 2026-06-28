@@ -11,6 +11,7 @@
  */
 
 import type {
+  AgentUsageReport,
   CheckoutSession,
   PaymentMethod,
   RechargePackId,
@@ -81,6 +82,23 @@ export class WalletClient {
       'PUT',
       '/v1/billing/spend-cap',
       { monthly_cap_usd },
+    );
+  }
+
+  /**
+   * Forward a per-agent usage record to the wallet service. The desktop app
+   * calls this from the chat-usage IPC handler after each completion so the
+   * `xcity.one` per-agent dashboard reflects desktop spend in addition to
+   * gateway/server-side spend.
+   *
+   * Always sends `source: "desktop"` so the backend can attribute spend to
+   * this client cleanly.
+   */
+  async reportAgentUsage(report: AgentUsageReport): Promise<{ ok: true }> {
+    return this.request<{ ok: true }>(
+      'POST',
+      '/v1/usage/agent',
+      { ...report, source: 'desktop' },
     );
   }
 
