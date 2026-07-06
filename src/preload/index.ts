@@ -301,7 +301,7 @@ const hermesAPI = {
       keyPath: string;
       remotePort: number;
       localPort: number;
-            dockerContainerName?: string;
+      dockerContainerName?: string;
     };
   }> => ipcRenderer.invoke("get-connection-config"),
 
@@ -337,7 +337,7 @@ const hermesAPI = {
         keyPath: string;
         remotePort: number;
         localPort: number;
-            dockerContainerName?: string;
+        dockerContainerName?: string;
       };
     }) => void,
   ): (() => void) => {

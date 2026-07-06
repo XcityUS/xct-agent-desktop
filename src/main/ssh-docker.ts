@@ -133,10 +133,15 @@ host_install_found = any(
 )
 
 home = expanded("$HOME/.hermes")
+home_empty = False
 if os.path.islink(home):
     home_state, home_target = "symlink", os.readlink(home)
 elif os.path.exists(home):
     home_state, home_target = "directory", None
+    try:
+        home_empty = os.path.isdir(home) and not os.listdir(home)
+    except Exception:
+        home_empty = False
 else:
     home_state, home_target = "missing", None
 
@@ -209,6 +214,7 @@ if docker_available:
 print(json.dumps({
     "hostInstallFound": bool(host_install_found and host_home_found),
     "hermesHomeState": home_state,
+    "hermesHomeEmpty": bool(home_empty),
     "hermesHomeTarget": home_target,
     "launcherState": launcher_state,
     "launcherContainerName": launcher_container,
@@ -239,6 +245,7 @@ export function parseSshHermesTargetInspection(
   return {
     hostInstallFound: Boolean(parsed.hostInstallFound),
     hermesHomeState: parsed.hermesHomeState || "missing",
+    hermesHomeEmpty: Boolean(parsed.hermesHomeEmpty),
     hermesHomeTarget: parsed.hermesHomeTarget || null,
     launcherState: parsed.launcherState || "missing",
     launcherContainerName: parsed.launcherContainerName || null,
@@ -269,6 +276,7 @@ export async function sshInspectHermesTarget(
     return {
       hostInstallFound: false,
       hermesHomeState: "missing",
+      hermesHomeEmpty: false,
       hermesHomeTarget: null,
       launcherState: "missing",
       launcherContainerName: null,

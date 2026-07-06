@@ -184,9 +184,26 @@ describe("parseSshHermesTargetInspection", () => {
     const parsed = parseSshHermesTargetInspection("", "");
     expect(parsed.hostInstallFound).toBe(false);
     expect(parsed.hermesHomeState).toBe("missing");
+    expect(parsed.hermesHomeEmpty).toBe(false);
     expect(parsed.launcherState).toBe("missing");
     expect(parsed.dockerContainers).toEqual([]);
     expect(parsed.error).toBeUndefined();
+  });
+
+  it("distinguishes an empty ~/.hermes directory from a real one", () => {
+    // An empty directory is replaceable by the setup symlink, so the UI must
+    // not report it as a conflict (greptile P1 on PR #435).
+    const parsed = parseSshHermesTargetInspection(
+      JSON.stringify({
+        hermesHomeState: "directory",
+        hermesHomeEmpty: true,
+        dockerAvailable: true,
+        dockerContainers: [container],
+      }),
+      "",
+    );
+    expect(parsed.hermesHomeState).toBe("directory");
+    expect(parsed.hermesHomeEmpty).toBe(true);
   });
 });
 

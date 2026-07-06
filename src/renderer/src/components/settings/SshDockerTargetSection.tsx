@@ -124,9 +124,12 @@ export default function SshDockerTargetSection({
     inspection?.launcherState === "docker" &&
     inspection.launcherContainerName === selected &&
     inspection.hermesHomeState === "symlink";
+  // An EMPTY ~/.hermes directory is not a conflict — setup replaces it with
+  // the data-volume symlink.
   const homeDirConflict =
     inspection !== null &&
     inspection.hermesHomeState === "directory" &&
+    !inspection.hermesHomeEmpty &&
     !inspection.hostInstallFound &&
     containers.length > 0;
 

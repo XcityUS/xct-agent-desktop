@@ -18,6 +18,12 @@ export interface SshHermesTargetInspection {
   hostInstallFound: boolean;
   /** State of ~/.hermes on the host: missing | directory | symlink. */
   hermesHomeState: "missing" | "directory" | "symlink";
+  /**
+   * True when hermesHomeState is "directory" and the directory is empty —
+   * setup can replace it with the data-volume symlink, so it is not a
+   * conflict.
+   */
+  hermesHomeEmpty: boolean;
   /** Symlink target when hermesHomeState is "symlink". */
   hermesHomeTarget: string | null;
   /** Desktop-managed docker hook, some other executable, or none. */
