@@ -27,4 +27,12 @@ export default {
     "Claw3D adalah lingkungan visualisasi 3D untuk agent Hermes Anda. Ini memungkinkan Anda melihat agent bekerja di ruang office interaktif.",
   setupDesc2:
     "Klik di bawah untuk mengunduh dan menyiapkan Claw3D otomatis. Ini akan meng-clone repository dan menginstal semua dependency.",
+  // Enterable building interiors
+  enter_office: "Masuk kantor",
+  enter_bank: "Masuk bank",
+  enter_showroom: "Masuk showroom",
+  exitToCity: "Keluar ke kota",
+  showroomCardColor: "Warna cat",
+  showroomCardHint:
+    "Lihat-lihat showroom — membeli mobil untuk agen Anda akan segera hadir.",
 } as const;

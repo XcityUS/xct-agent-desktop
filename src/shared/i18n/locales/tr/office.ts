@@ -26,4 +26,12 @@ export default {
     "Claw3D, Hermes ajanlarınız için 3B görselleştirme ortamıdır. Ajanlarınızı interaktif bir ofis alanında çalışırken görmenizi sağlar.",
   setupDesc2:
     "Claw3D'yi otomatik olarak indirip kurmak için aşağıya tıklayın. Bu, depoyu kopyalayacak ve tüm bağımlılıkları yükleyecektir.",
+  // Enterable building interiors
+  enter_office: "Ofise gir",
+  enter_bank: "Bankaya gir",
+  enter_showroom: "Galeriye gir",
+  exitToCity: "Şehre çık",
+  showroomCardColor: "Boya rengi",
+  showroomCardHint:
+    "Galeriye yakından bakın — ajanlarınız için araba satın alma yakında geliyor.",
 } as const;

@@ -26,4 +26,11 @@ export default {
     "Claw3D 是你的 Hermes Agent 的 3D 視覺化環境。它讓你可以看到 Agent 在互動式辦公空間中工作。",
   setupDesc2:
     "點擊下方自動下載並設定 Claw3D。這將複製儲存庫並安裝所有相依套件。",
+  // Enterable building interiors
+  enter_office: "進入辦公室",
+  enter_bank: "進入銀行",
+  enter_showroom: "進入車行",
+  exitToCity: "回到城市",
+  showroomCardColor: "車漆顏色",
+  showroomCardHint: "在車行裡四處看看——為你的智慧代理購車功能即將推出。",
 } as const;

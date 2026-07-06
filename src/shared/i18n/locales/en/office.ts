@@ -56,4 +56,12 @@ export default {
     "Hardware acceleration is turned off in Settings → Appearance, so the 3D office is using slow software rendering.",
   reenableGpu: "Re-enable GPU & restart",
   dismissNotice: "Dismiss",
+  // Enterable building interiors
+  enter_office: "Enter Office",
+  enter_bank: "Enter Bank",
+  enter_showroom: "Enter Showroom",
+  exitToCity: "Exit to city",
+  showroomCardColor: "Paint color",
+  showroomCardHint:
+    "Take a closer look around the showroom — buying cars for your agents is coming soon.",
 } as const;

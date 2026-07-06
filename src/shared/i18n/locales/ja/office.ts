@@ -27,4 +27,12 @@ export default {
     "Claw3D は Hermes エージェント用の 3D 可視化環境です。インタラクティブなオフィス空間でエージェントの動きが見られます。",
   setupDesc2:
     "下のボタンで Claw3D を自動ダウンロード・セットアップします。リポジトリをクローンし、依存関係をすべてインストールします。",
+  // Enterable building interiors
+  enter_office: "オフィスに入る",
+  enter_bank: "銀行に入る",
+  enter_showroom: "ショールームに入る",
+  exitToCity: "街に戻る",
+  showroomCardColor: "ボディカラー",
+  showroomCardHint:
+    "ショールームをご覧ください。エージェント用の車の購入機能は近日公開予定です。",
 } as const;

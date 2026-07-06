@@ -25,4 +25,11 @@ export default {
   setupDesc1:
     "Claw3D 是你的 Hermes 代理的 3D 可视化环境。它让你可以看到代理在交互式办公空间中工作。",
   setupDesc2: "点击下方自动下载并设置 Claw3D。这将克隆仓库并安装所有依赖。",
+  // Enterable building interiors
+  enter_office: "进入办公室",
+  enter_bank: "进入银行",
+  enter_showroom: "进入车行",
+  exitToCity: "回到城市",
+  showroomCardColor: "车漆颜色",
+  showroomCardHint: "在车行里四处看看——为你的智能体购车功能即将上线。",
 } as const;

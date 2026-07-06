@@ -47,4 +47,12 @@ export default {
   ceo: 'מנכ"ל',
   makeCeo: 'מינוי למנכ"ל',
   removeCeo: 'הסרה מתפקיד מנכ"ל',
+  // Enterable building interiors
+  enter_office: "כניסה למשרד",
+  enter_bank: "כניסה לבנק",
+  enter_showroom: "כניסה לאולם התצוגה",
+  exitToCity: "יציאה לעיר",
+  showroomCardColor: "צבע הרכב",
+  showroomCardHint:
+    "הסתובבו באולם התצוגה — רכישת מכוניות לסוכנים שלכם תגיע בקרוב.",
 } as const;

@@ -27,4 +27,12 @@ export default {
     "Claw3D to środowisko wizualizacji 3D dla agentów Hermes. Pozwala obserwować pracę agentów w interaktywnej przestrzeni biurowej.",
   setupDesc2:
     "Kliknij poniżej, aby automatycznie pobrać i skonfigurować Claw3D. Repozytorium zostanie sklonowane, a zależności zainstalowane.",
+  // Enterable building interiors
+  enter_office: "Wejdź do biura",
+  enter_bank: "Wejdź do banku",
+  enter_showroom: "Wejdź do salonu",
+  exitToCity: "Wyjdź do miasta",
+  showroomCardColor: "Kolor lakieru",
+  showroomCardHint:
+    "Rozejrzyj się po salonie — wkrótce kupisz samochody dla swoich agentów.",
 } as const;

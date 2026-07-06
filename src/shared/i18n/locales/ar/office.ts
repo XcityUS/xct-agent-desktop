@@ -47,4 +47,11 @@ export default {
   ceo: "المدير التنفيذي",
   makeCeo: "تعيين كمدير تنفيذي",
   removeCeo: "إزالة من المدير التنفيذي",
+  // Enterable building interiors
+  enter_office: "ادخل المكتب",
+  enter_bank: "ادخل البنك",
+  enter_showroom: "ادخل المعرض",
+  exitToCity: "الخروج إلى المدينة",
+  showroomCardColor: "لون الطلاء",
+  showroomCardHint: "تجوّل في المعرض — شراء السيارات لوكلائك قادم قريبًا.",
 } as const;
