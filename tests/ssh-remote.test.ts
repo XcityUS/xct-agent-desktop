@@ -220,6 +220,26 @@ describe("ssh gateway commands (issue #285)", () => {
     expect(cmd).toContain("gateway.pid");
     expect(systemdBranch(cmd)).not.toContain("gateway.pid");
   });
+
+  it("status falls back to a loopback health probe for container pids (issue #432)", () => {
+    // Docker-backed installs record the container-namespace pid, so a host
+    // `kill -0` reports a healthy gateway as stopped; the health probe is the
+    // namespace-agnostic tiebreaker.
+    const cmd = buildGatewayStatusCommand(undefined, 8642);
+    expect(cmd).toContain("http://127.0.0.1:8642/health");
+    expect(cmd).toContain('kill -0 $pid 2>/dev/null && echo "running"');
+  });
+
+  it("status without a health port keeps the plain pid check", () => {
+    const cmd = buildGatewayStatusCommand();
+    expect(cmd).not.toContain("/health");
+  });
+
+  it("status ignores non-integer health ports", () => {
+    expect(buildGatewayStatusCommand(undefined, 8642.5)).not.toContain(
+      "/health",
+    );
+  });
 });
 
 describe("buildRemoteHermesCmd venv probe (issue #284)", () => {

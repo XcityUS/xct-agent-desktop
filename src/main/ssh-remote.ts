@@ -2062,8 +2062,21 @@ export function buildGatewayStopCommand(profile?: string): string {
  * gateway this is the unit's `is-active` state (`active` when up); otherwise
  * it is a liveness check on the recorded pid. Prints `active` or `running`
  * when up, anything else when not.
+ *
+ * `healthPort` (issue #432): Docker-backed installs record the pid in the
+ * CONTAINER's pid namespace, so a host-side `kill -0` reports a healthy
+ * gateway as stopped — and the desktop then nohups a second `gateway run`
+ * into the container. When the recorded pid is not visible on the host, fall
+ * back to probing the gateway's loopback health endpoint, which is
+ * namespace-agnostic.
  */
-export function buildGatewayStatusCommand(profile?: string): string {
+export function buildGatewayStatusCommand(
+  profile?: string,
+  healthPort?: number,
+): string {
+  const healthProbe = Number.isInteger(healthPort)
+    ? `python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${healthPort}/health', timeout=3)" >/dev/null 2>&1 && echo "running" || echo "stopped"`
+    : `echo "stopped"`;
   if (profile && profile !== "default") {
     const pidPath = remoteGatewayPidPath(profile);
     return (
@@ -2079,8 +2092,8 @@ export function buildGatewayStatusCommand(profile?: string): string {
     `else ` +
     `if [ -f $HOME/.hermes/gateway.pid ]; then ` +
     `pid=$(python3 -c "import json,sys; d=json.load(open('$HOME/.hermes/gateway.pid')); print(d.get('pid',d) if isinstance(d,dict) else d)" 2>/dev/null || cat $HOME/.hermes/gateway.pid); ` +
-    `kill -0 $pid 2>/dev/null && echo "running" || echo "stopped"; ` +
-    `else echo "stopped"; fi; ` +
+    `kill -0 $pid 2>/dev/null && echo "running" || { ${healthProbe}; }; ` +
+    `else ${healthProbe}; fi; ` +
     `fi`
   );
 }
@@ -2090,7 +2103,15 @@ export async function sshGatewayStatus(
   profile?: string,
 ): Promise<boolean> {
   try {
-    const out = await sshExec(config, buildGatewayStatusCommand(profile));
+    // The health fallback targets the connection's configured gateway API
+    // port. Named profiles run their own gateways on ports this function
+    // cannot infer, so only the default-profile status uses it.
+    const healthPort =
+      !profile || profile === "default" ? config.remotePort : undefined;
+    const out = await sshExec(
+      config,
+      buildGatewayStatusCommand(profile, healthPort),
+    );
     const state = out.trim();
     return state === "running" || state === "active";
   } catch {
