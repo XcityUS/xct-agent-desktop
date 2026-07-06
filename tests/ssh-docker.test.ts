@@ -218,20 +218,45 @@ describe("buildApplySshDockerTargetCommand", () => {
   );
 
   it("passes the launcher script and data home as data, not code", () => {
-    const cmd = buildApplySshDockerTargetCommand(launcher, "/data/it's home");
+    const cmd = buildApplySshDockerTargetCommand(
+      "hermes-1",
+      launcher,
+      "/data/it's home",
+    );
     expect(cmd).toContain(JSON.stringify(launcher));
     expect(cmd).toContain('"/data/it\'s home"');
   });
 
+  it("validates the container name before building the script", () => {
+    expect(() =>
+      buildApplySshDockerTargetCommand("bad name", launcher, "/data/hermes"),
+    ).toThrow("Invalid Docker container name");
+  });
+
   it("refuses to clobber non-managed launchers and real home directories", () => {
-    const cmd = buildApplySshDockerTargetCommand(launcher, "/data/hermes");
+    const cmd = buildApplySshDockerTargetCommand(
+      "hermes-1",
+      launcher,
+      "/data/hermes",
+    );
     expect(cmd).toContain("A custom launcher already exists");
     expect(cmd).toContain("~/.hermes already exists as a real directory");
   });
 
+  it("seeds API server settings from the container env, not fresh values first", () => {
+    const cmd = buildApplySshDockerTargetCommand(
+      "hermes-1",
+      launcher,
+      "/data/hermes",
+    );
+    expect(cmd).toContain('cenv.get("API_SERVER_KEY")');
+    expect(cmd).toContain("API_SERVER_ENABLED");
+    expect(cmd).toContain("secrets.token_hex(24)");
+  });
+
   itPython("generates python that compiles", () => {
     assertPythonCompiles(
-      buildApplySshDockerTargetCommand(launcher, "/data/hermes"),
+      buildApplySshDockerTargetCommand("hermes-1", launcher, "/data/hermes"),
     );
   });
 });

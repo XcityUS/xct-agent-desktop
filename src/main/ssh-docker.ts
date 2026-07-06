@@ -2,6 +2,7 @@ import {
   sshExec,
   shellQuote,
   buildRemoteHermesCmd,
+  sshWaitGatewayApiReady,
   REMOTE_HERMES_CLI_CANDIDATES,
   REMOTE_HERMES_LAUNCHER_CANDIDATES,
 } from "./ssh-remote";
@@ -345,19 +346,32 @@ print(json.dumps({"ok": True, "dataHome": data_home, "execUser": exec_user, "cli
 }
 
 /**
- * Remote python that writes the launcher hook and the ~/.hermes symlink, then
+ * Remote python that writes the launcher hook and the ~/.hermes symlink,
+ * seeds the API server settings from the container's environment, then
  * verifies the launcher answers `--version`. Refuses to overwrite a
  * user-authored launcher or a real (non-empty) ~/.hermes directory. The
  * launcher script text is built locally (buildDockerLauncherScript) and passed
  * through as data. Exported for unit tests.
+ *
+ * The .env seeding matters for the first connect: Coolify-style deployments
+ * often set API_SERVER_KEY / API_SERVER_ENABLED as container env vars only.
+ * Without them in the Hermes home .env, the desktop's connect flow generates
+ * its own values and restarts the gateway mid-connect — which fails the first
+ * attempt on a supervised container. Seeding here (with the container's own
+ * key, which never leaves the remote) makes the later connect a no-op.
  */
 export function buildApplySshDockerTargetCommand(
+  containerName: string,
   launcherScript: string,
   dataHome: string,
 ): string {
+  if (!isValidDockerContainerName(containerName)) {
+    throw new Error(`Invalid Docker container name: ${containerName}`);
+  }
   return `
-import json, os, subprocess, sys, tempfile
+import json, os, re, secrets, subprocess, sys, tempfile
 
+container = ${pythonJson(containerName)}
 launcher_path = ${pythonJson(MANAGED_LAUNCHER_PATH)}
 marker_prefix = ${pythonJson(LAUNCHER_MARKER_PREFIX)}
 launcher_script = ${pythonJson(launcherScript)}
@@ -410,6 +424,51 @@ version = subprocess.run([launcher, "--version"], check=False, text=True, captur
 if version.returncode != 0:
     fail("Launcher verification failed: " + (version.stderr.strip() or "hermes --version failed"))
 
+# Seed API server settings into the Hermes home .env so the desktop's connect
+# flow finds them and does not have to write + restart the gateway mid-connect.
+# Prefer the container's own values; the key never leaves this host.
+env_file = os.path.join(home, ".env")
+env_content = ""
+if os.path.exists(env_file):
+    try:
+        with open(env_file) as f:
+            env_content = f.read()
+    except Exception:
+        env_content = ""
+
+def has_env_line(name):
+    return re.search("^%s=" % re.escape(name), env_content, re.M) is not None
+
+need_key = not has_env_line("API_SERVER_KEY")
+need_enabled = not has_env_line("API_SERVER_ENABLED")
+if need_key or need_enabled:
+    cenv = {}
+    proc = subprocess.run(["docker", "exec", container, "sh", "-c", "env"], check=False, text=True, capture_output=True, timeout=15)
+    if proc.returncode == 0:
+        for line in proc.stdout.splitlines():
+            if "=" in line:
+                k, v = line.split("=", 1)
+                cenv[k] = v
+    lines = []
+    if need_key:
+        key = (cenv.get("API_SERVER_KEY") or "").strip()
+        if key:
+            warnings.append("Copied the container's API server key into the Hermes .env so the desktop can use it.")
+        else:
+            key = secrets.token_hex(24)
+            warnings.append("Generated an API server key in the Hermes .env - the gateway restarts once to load it.")
+        lines.append("API_SERVER_KEY=%s" % key)
+    if need_enabled:
+        enabled = (cenv.get("API_SERVER_ENABLED") or "").strip().lower()
+        lines.append("API_SERVER_ENABLED=%s" % (enabled if enabled in ("true", "1", "yes") else "true"))
+    try:
+        with open(env_file, "a") as f:
+            if env_content and not env_content.endswith("\\n"):
+                f.write("\\n")
+            f.write("\\n".join(lines) + "\\n")
+    except Exception as exc:
+        warnings.append("Could not update the Hermes .env: %s" % exc)
+
 if not os.path.exists(os.path.join(home, "config.yaml")):
     warnings.append("No config.yaml in the Hermes home yet - run setup once the connection is saved.")
 
@@ -459,7 +518,7 @@ export async function sshProvisionDockerTarget(
     );
     const applyOut = await sshPython(
       config,
-      buildApplySshDockerTargetCommand(launcherScript, probe.dataHome),
+      buildApplySshDockerTargetCommand(name, launcherScript, probe.dataHome),
       90000,
     );
     const applied = JSON.parse(applyOut.trim() || "{}") as {
@@ -491,6 +550,26 @@ export async function sshProvisionDockerTarget(
         "Launcher was written but the Hermes CLI probe still returned nothing.",
       );
     }
+
+    // First-connect readiness: if the gateway API is not answering (fresh key
+    // just seeded, or api_server disabled at container start), restart the
+    // container NOW — while the user watches the setup spinner — instead of
+    // letting the first chat attempt hit the connect flow's short restart
+    // window and fail.
+    const warnings = Array.isArray(applied.warnings) ? applied.warnings : [];
+    if (!(await sshWaitGatewayApiReady(config, config.remotePort, 5000))) {
+      await sshExec(config, `docker restart ${shellQuote(name)}`, undefined, 90000);
+      if (await sshWaitGatewayApiReady(config, config.remotePort, 120000)) {
+        warnings.push(
+          "Restarted the container so the gateway loads the API server settings.",
+        );
+      } else {
+        warnings.push(
+          `Gateway API did not answer on port ${config.remotePort} after a container restart — check the container logs before connecting.`,
+        );
+      }
+    }
+
     return {
       ok: true,
       containerName: name,
@@ -498,7 +577,7 @@ export async function sshProvisionDockerTarget(
       execUser: probe.execUser || "",
       cliPath: probe.cliPath,
       version: version.trim() || applied.version || "",
-      warnings: Array.isArray(applied.warnings) ? applied.warnings : [],
+      warnings,
     };
   } catch (error) {
     return failure(error instanceof Error ? error.message : String(error));
