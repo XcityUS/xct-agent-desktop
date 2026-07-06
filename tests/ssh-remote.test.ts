@@ -53,7 +53,16 @@ const sshConfig: SshConfig = {
   localPort: 18642,
 };
 
+// The shim-execution tests below run the generated command through a real
+// POSIX shell. A clean Windows dev environment has no `bash` on PATH (and the
+// shim/PATH model is POSIX-specific), so they skip there — the portable string
+// assertions in this file still run on every platform.
+const itPosix = process.platform === "win32" ? it.skip : it;
+
 function runWithHermesShim(command: string): Buffer {
+  if (process.platform === "win32") {
+    throw new Error("POSIX-only helper — guard the calling test with itPosix");
+  }
   const home = mkdtempSync(join(tmpdir(), "hermes-ssh-cmd-home-"));
   // Install the shim at a path buildRemoteHermesCmd PROBES BY ABSOLUTE PATH
   // ($HOME/.local/bin/hermes), not just on PATH. The command runs under
@@ -130,7 +139,7 @@ describe("ssh Hermes command quoting", () => {
     );
   });
 
-  it.each([
+  itPosix.each([
     [
       "multi-word title",
       ["kanban", "create", "My task title", "--triage", "--json"],
@@ -160,7 +169,7 @@ describe("ssh Hermes command quoting", () => {
     30000,
   );
 
-  it("preserves existing extraShell redirects", () => {
+  itPosix("preserves existing extraShell redirects", () => {
     const output = runWithHermesShim(
       buildRemoteHermesCmd(["doctor"], " 2>&1"),
     ).toString("utf8");

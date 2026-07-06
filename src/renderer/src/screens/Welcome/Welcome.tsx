@@ -10,6 +10,7 @@ import {
 } from "../../assets/icons";
 import { getInstallCmd } from "../../constants";
 import { useI18n } from "../../components/useI18n";
+import SshDockerTargetSection from "../../components/settings/SshDockerTargetSection";
 
 interface WelcomeProps {
   error: string | null;
@@ -43,6 +44,7 @@ function Welcome({
   const [sshUser, setSshUser] = useState("");
   const [sshKeyPath, setSshKeyPath] = useState("");
   const [sshRemotePort, setSshRemotePort] = useState("");
+  const [sshDockerContainer, setSshDockerContainer] = useState("");
   const [sshError, setSshError] = useState<string | null>(null);
   const [sshTesting, setSshTesting] = useState(false);
 
@@ -97,6 +99,7 @@ function Welcome({
           sshKeyPath.trim(),
           remotePort,
           18642,
+          sshDockerContainer.trim(),
         );
         onRecheck();
       } else {
@@ -266,6 +269,18 @@ function Welcome({
             placeholder="8642"
             value={sshRemotePort}
             onChange={(e) => setSshRemotePort(e.target.value)}
+          />
+
+          <SshDockerTargetSection
+            draft={{
+              host: sshHost,
+              port: parseInt(sshPort, 10) || 22,
+              username: sshUser,
+              keyPath: sshKeyPath,
+              remotePort: parseInt(sshRemotePort, 10) || 8642,
+            }}
+            value={sshDockerContainer}
+            onChange={setSshDockerContainer}
           />
 
           <div className="welcome-remote-row" style={{ marginTop: 16 }}>

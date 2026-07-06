@@ -144,7 +144,7 @@ function sanitizeSshError(stderr: string): string {
   return cleaned;
 }
 
-function shellQuote(value: string): string {
+export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\"'\"'")}'`;
 }
 
@@ -1702,7 +1702,7 @@ export function parseHermesProfileListOutput(output: string): SshProfileInfo[] {
 // Per-user launcher hooks a managed deployment can drop in to wrap the real
 // Hermes CLI (custom HERMES_HOME, service user, unusual filesystem layout).
 // Kept in sync with the launcher probe order in buildRemoteHermesCmd.
-const REMOTE_HERMES_LAUNCHER_CANDIDATES = [
+export const REMOTE_HERMES_LAUNCHER_CANDIDATES = [
   "$HOME/.config/hermes-desktop/remote-hermes",
   "$HOME/.hermes/desktop-remote-hermes",
 ];
@@ -3266,17 +3266,21 @@ export async function sshListCachedSessions(
 // are not visible.
 //
 // Exported for unit testing the probe list without a live remote host.
+// Shared with the SSH target inspection in ssh-docker.ts so "is Hermes
+// installed on the host?" uses the exact same probe list as command execution.
+export const REMOTE_HERMES_CLI_CANDIDATES = [
+  "$HOME/hermes-agent/.venv/bin/hermes",
+  "$HOME/hermes-agent/venv/bin/hermes",
+  "$HOME/.hermes/hermes-agent/.venv/bin/hermes",
+  "$HOME/.hermes/hermes-agent/venv/bin/hermes",
+  "/opt/hermes/hermes-agent/.venv/bin/hermes",
+  "/opt/hermes/hermes-agent/venv/bin/hermes",
+  "$HOME/.local/bin/hermes",
+];
+
 export function buildRemoteHermesCmd(args: string[], extraShell = ""): string {
   const launcherCandidates = REMOTE_HERMES_LAUNCHER_CANDIDATES;
-  const candidates = [
-    "$HOME/hermes-agent/.venv/bin/hermes",
-    "$HOME/hermes-agent/venv/bin/hermes",
-    "$HOME/.hermes/hermes-agent/.venv/bin/hermes",
-    "$HOME/.hermes/hermes-agent/venv/bin/hermes",
-    "/opt/hermes/hermes-agent/.venv/bin/hermes",
-    "/opt/hermes/hermes-agent/venv/bin/hermes",
-    "$HOME/.local/bin/hermes",
-  ];
+  const candidates = REMOTE_HERMES_CLI_CANDIDATES;
   const quotedArgs = args.map((a) => shellQuote(a)).join(" ");
   const launcherProbe = launcherCandidates
     .map((p) => `[ -x ${p} ] && exec ${p} ${quotedArgs}${extraShell}`)

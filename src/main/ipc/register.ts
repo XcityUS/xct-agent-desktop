@@ -370,6 +370,10 @@ import {
   sshRunDump,
   sshDiscoverMemoryProviders,
 } from "../ssh-remote";
+import {
+  sshInspectHermesTarget,
+  sshProvisionDockerTarget,
+} from "../ssh-docker";
 
 export interface IpcContext {
   activeRuns: Map<string, () => void>;
@@ -1221,12 +1225,21 @@ export function registerIpcHandlers(context: IpcContext): void {
       keyPath: string,
       remotePort: number,
       localPort: number,
+      dockerContainerName?: string,
     ) => {
       const current = getConnectionConfig();
       setConnectionConfig({
         ...current,
         mode: "ssh",
-        ssh: { host, port, username, keyPath, remotePort, localPort },
+        ssh: {
+          host,
+          port,
+          username,
+          keyPath,
+          remotePort,
+          localPort,
+          dockerContainerName: dockerContainerName?.trim() || "",
+        },
       });
       resetSshDashboardAvailability();
       notifyConnectionConfigChanged();
@@ -1257,6 +1270,52 @@ export function registerIpcHandlers(context: IpcContext): void {
         remotePort,
         localPort: 19642,
       }),
+  );
+
+  // Docker-backed SSH targets (issue #432): survey the remote (host install,
+  // ~/.hermes state, launcher hook, running Hermes containers) and provision
+  // the launcher hook + ~/.hermes symlink for a selected container. Both take
+  // explicit connection params so Settings/Welcome can inspect a draft config
+  // before saving it.
+  ipcMain.handle(
+    "inspect-ssh-hermes-target",
+    (
+      _event,
+      host: string,
+      port: number,
+      username: string,
+      keyPath: string,
+      remotePort: number,
+      dockerContainerName?: string,
+    ) =>
+      sshInspectHermesTarget(
+        { host, port, username, keyPath, remotePort, localPort: 19642 },
+        dockerContainerName?.trim() || "",
+      ),
+  );
+
+  ipcMain.handle(
+    "provision-ssh-docker-target",
+    async (
+      _event,
+      host: string,
+      port: number,
+      username: string,
+      keyPath: string,
+      remotePort: number,
+      dockerContainerName: string,
+    ) => {
+      const result = await sshProvisionDockerTarget(
+        { host, port, username, keyPath, remotePort, localPort: 19642 },
+        dockerContainerName,
+      );
+      if (result.ok) {
+        // The remote just gained a launcher/home it did not have — retry the
+        // dashboard probe immediately instead of waiting out the negative TTL.
+        resetSshDashboardAvailability();
+      }
+      return result;
+    },
   );
 
   ipcMain.handle("start-ssh-tunnel", async () => {

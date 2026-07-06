@@ -22,6 +22,10 @@ import type {
   HermesAccountUser,
 } from "../shared/account";
 import type { GpuPreferenceMode, GpuStatus } from "../shared/gpu";
+import type {
+  SshHermesTargetInspection,
+  SshDockerProvisionResult,
+} from "../shared/ssh-docker";
 
 /**
  * Mirror of the renderer-side `CredentialPoolEntry` ambient type
@@ -297,6 +301,7 @@ const hermesAPI = {
       keyPath: string;
       remotePort: number;
       localPort: number;
+            dockerContainerName?: string;
     };
   }> => ipcRenderer.invoke("get-connection-config"),
 
@@ -332,6 +337,7 @@ const hermesAPI = {
         keyPath: string;
         remotePort: number;
         localPort: number;
+            dockerContainerName?: string;
       };
     }) => void,
   ): (() => void) => {
@@ -354,6 +360,7 @@ const hermesAPI = {
             keyPath: string;
             remotePort: number;
             localPort: number;
+            dockerContainerName?: string;
           };
         },
       );
@@ -369,6 +376,7 @@ const hermesAPI = {
     keyPath: string,
     remotePort: number,
     localPort: number,
+    dockerContainerName?: string,
   ): Promise<boolean> =>
     ipcRenderer.invoke(
       "set-ssh-config",
@@ -378,6 +386,43 @@ const hermesAPI = {
       keyPath,
       remotePort,
       localPort,
+      dockerContainerName,
+    ),
+
+  inspectSshHermesTarget: (
+    host: string,
+    port: number,
+    username: string,
+    keyPath: string,
+    remotePort: number,
+    dockerContainerName?: string,
+  ): Promise<SshHermesTargetInspection> =>
+    ipcRenderer.invoke(
+      "inspect-ssh-hermes-target",
+      host,
+      port,
+      username,
+      keyPath,
+      remotePort,
+      dockerContainerName,
+    ),
+
+  provisionSshDockerTarget: (
+    host: string,
+    port: number,
+    username: string,
+    keyPath: string,
+    remotePort: number,
+    dockerContainerName: string,
+  ): Promise<SshDockerProvisionResult> =>
+    ipcRenderer.invoke(
+      "provision-ssh-docker-target",
+      host,
+      port,
+      username,
+      keyPath,
+      remotePort,
+      dockerContainerName,
     ),
 
   testRemoteConnection: (url: string, apiKey?: string): Promise<boolean> =>
