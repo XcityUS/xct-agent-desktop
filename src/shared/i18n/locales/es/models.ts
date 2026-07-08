@@ -1,5 +1,6 @@
 export default {
   title: "Modelos",
+  freeBadge: "(gratis)",
   searchPlaceholder: "Buscar modelos...",
   empty: "Todavía no hay modelos",
   noMatch: "Ningún modelo coincide con tu búsqueda",
@@ -20,7 +21,8 @@ export default {
   yes: "Sí",
   no: "No",
   nameRequired: "El nombre y el ID del modelo son obligatorios",
-  customProviderHint: "Solo es necesario para proveedores personalizados o locales",
+  customProviderHint:
+    "Solo es necesario para proveedores personalizados o locales",
   apiKeyLabel: "API key",
   apiKeyHint:
     "Se almacena como una variable de entorno. Elige la clave de entorno correspondiente según la URL, o CUSTOM_API_KEY en caso contrario.",

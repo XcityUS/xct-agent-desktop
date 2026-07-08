@@ -4,7 +4,10 @@ import { join } from "path";
 
 const ROOT = join(__dirname, "..");
 const preloadSrc = readFileSync(join(ROOT, "src/preload/index.ts"), "utf-8");
-const preloadTypes = readFileSync(join(ROOT, "src/preload/index.d.ts"), "utf-8");
+const preloadTypes = readFileSync(
+  join(ROOT, "src/preload/index.d.ts"),
+  "utf-8",
+);
 
 /**
  * Extract method names from the hermesAPI object in preload/index.ts.
@@ -26,9 +29,7 @@ function extractPreloadMethods(src: string): string[] {
 function extractTypeMethods(src: string): string[] {
   const methods: string[] = [];
   // Match lines inside `interface HermesAPI { ... }`
-  const interfaceMatch = src.match(
-    /interface\s+HermesAPI\s*\{([\s\S]*?)^\}/m,
-  );
+  const interfaceMatch = src.match(/interface\s+HermesAPI\s*\{([\s\S]*?)^\}/m);
   if (!interfaceMatch) return [];
   const body = interfaceMatch[1];
   const re = /^\s{2}(\w+)\s*[:(]/gm;
@@ -85,11 +86,34 @@ describe("New APIs from v0.8/v0.9 features", () => {
   it("has MCP server list API", () => {
     expect(preloadMethods).toContain("listMcpServers");
     expect(typeMethods).toContain("listMcpServers");
+    expect(preloadMethods).toContain("addMcpServer");
+    expect(typeMethods).toContain("addMcpServer");
+    expect(preloadMethods).toContain("removeMcpServer");
+    expect(typeMethods).toContain("removeMcpServer");
+    expect(preloadMethods).toContain("setMcpServerEnabled");
+    expect(typeMethods).toContain("setMcpServerEnabled");
+    expect(preloadMethods).toContain("testMcpServer");
+    expect(typeMethods).toContain("testMcpServer");
+    expect(preloadMethods).toContain("listMcpCatalog");
+    expect(typeMethods).toContain("listMcpCatalog");
+    expect(preloadMethods).toContain("installMcpCatalogEntry");
+    expect(typeMethods).toContain("installMcpCatalogEntry");
   });
 
   it("has memory provider discovery API", () => {
     expect(preloadMethods).toContain("discoverMemoryProviders");
     expect(typeMethods).toContain("discoverMemoryProviders");
+  });
+
+  it("has dashboard transport probe APIs", () => {
+    expect(preloadMethods).toContain("dashboardStatus");
+    expect(typeMethods).toContain("dashboardStatus");
+    expect(preloadMethods).toContain("startDashboard");
+    expect(typeMethods).toContain("startDashboard");
+    expect(preloadMethods).toContain("stopDashboard");
+    expect(typeMethods).toContain("stopDashboard");
+    expect(preloadMethods).toContain("setConnectionChatTransports");
+    expect(typeMethods).toContain("setConnectionChatTransports");
   });
 });
 
@@ -118,19 +142,25 @@ describe("Legacy APIs preserved (backward compat)", () => {
     "sendMessage",
     "abortChat",
     "onChatChunk",
+    "onChatReasoningChunk",
     "onChatDone",
+    "onChatSessionStarted",
     "onChatToolProgress",
     "onChatUsage",
     "onChatError",
     // Gateway
     "startGateway",
     "stopGateway",
+    "restartGateway",
     "gatewayStatus",
     "getPlatformEnabled",
     "setPlatformEnabled",
     // Sessions
     "listSessions",
     "getSessionMessages",
+    "recordSessionContinuation",
+    "recordSessionLocalError",
+    "deleteSessions",
     // Profiles
     "listProfiles",
     "createProfile",
@@ -160,6 +190,7 @@ describe("Legacy APIs preserved (backward compat)", () => {
     "addModel",
     "removeModel",
     "updateModel",
+    "onModelLibraryChanged",
     // Credential pool
     "getCredentialPool",
     "setCredentialPool",
@@ -175,6 +206,7 @@ describe("Legacy APIs preserved (backward compat)", () => {
     "triggerCronJob",
     // Shell
     "openExternal",
+    "openTerminal",
   ];
 
   for (const method of requiredMethods) {
@@ -192,8 +224,9 @@ describe("Legacy APIs preserved (backward compat)", () => {
 
 describe("IPC channel consistency", () => {
   it("preload invoke calls use quoted string channel names", () => {
-    const invokeChannels = [...preloadSrc.matchAll(/ipcRenderer\.invoke\(\s*["']([^"']+)["']/g)]
-      .map((m) => m[1]);
+    const invokeChannels = [
+      ...preloadSrc.matchAll(/ipcRenderer\.invoke\(\s*["']([^"']+)["']/g),
+    ].map((m) => m[1]);
     expect(invokeChannels.length).toBeGreaterThan(30);
     // Every channel should be kebab-case
     for (const ch of invokeChannels) {
@@ -202,8 +235,9 @@ describe("IPC channel consistency", () => {
   });
 
   it("preload on/removeListener calls use quoted string channel names", () => {
-    const onChannels = [...preloadSrc.matchAll(/ipcRenderer\.on\(\s*["']([^"']+)["']/g)]
-      .map((m) => m[1]);
+    const onChannels = [
+      ...preloadSrc.matchAll(/ipcRenderer\.on\(\s*["']([^"']+)["']/g),
+    ].map((m) => m[1]);
     expect(onChannels.length).toBeGreaterThan(0);
     for (const ch of onChannels) {
       expect(ch).toMatch(/^[a-z][a-z0-9-]*$/);

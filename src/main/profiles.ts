@@ -2,15 +2,35 @@ import { execFileSync } from "child_process";
 import { join } from "path";
 import { homedir } from "os";
 import { promises as fs } from "fs";
-import { existsSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import {
   HERMES_HOME,
   HERMES_PYTHON,
-  HERMES_SCRIPT,
+  hermesCliArgs,
   getEnhancedPath,
 } from "./installer";
+import {
+  getActiveProfileNameSync,
+  isValidNamedProfileName,
+  isValidProfileName,
+  pidIsAliveAs,
+  PROFILE_NAME_ERROR,
+} from "./utils";
+import { HIDDEN_SUBPROCESS_OPTIONS } from "./process-options";
+import { readProfileMeta, defaultColorForName } from "./profile-meta";
 
 const PROFILES_DIR = join(HERMES_HOME, "profiles");
+
+function commandErrorMessage(err: unknown): string {
+  const e = err as {
+    stdout?: Buffer | string;
+    stderr?: Buffer | string;
+    message?: string;
+  };
+  const stdout = e.stdout?.toString().trim();
+  const stderr = e.stderr?.toString().trim();
+  return stdout || stderr || e.message || "Command failed";
+}
 
 export interface ProfileInfo {
   name: string;
@@ -23,6 +43,10 @@ export interface ProfileInfo {
   hasSoul: boolean;
   skillCount: number;
   gatewayRunning: boolean;
+  /** Resolved accent colour (stored override, else a stable default). */
+  color: string;
+  /** Avatar image as a data URL, or null when none is set. */
+  avatar: string | null;
 }
 
 async function readProfileConfig(profilePath: string): Promise<{
@@ -74,24 +98,23 @@ async function countSkills(profilePath: string): Promise<number> {
 async function isGatewayRunning(profilePath: string): Promise<boolean> {
   const pidFile = join(profilePath, "gateway.pid");
   try {
-    const raw = await fs.readFile(pidFile, "utf-8");
-    const pid = parseInt(raw.trim(), 10);
+    const raw = (await fs.readFile(pidFile, "utf-8")).trim();
+    // The Python hermes CLI writes JSON: {"pid": <n>, "kind": ..., ...}.
+    // Older builds wrote a bare integer, so fall back to parseInt.
+    const parsed = raw.startsWith("{")
+      ? (JSON.parse(raw) as { pid?: unknown }).pid
+      : parseInt(raw, 10);
+    const pid =
+      typeof parsed === "number" && Number.isFinite(parsed) ? parsed : NaN;
     if (isNaN(pid)) return false;
-    process.kill(pid, 0);
-    return true;
+    return pidIsAliveAs(pid, ["python", "pythonw"]);
   } catch {
     return false;
   }
 }
 
 async function getActiveProfileName(): Promise<string> {
-  const activeFile = join(HERMES_HOME, "active_profile");
-  try {
-    const name = await fs.readFile(activeFile, "utf-8");
-    return name.trim() || "default";
-  } catch {
-    return "default";
-  }
+  return getActiveProfileNameSync();
 }
 
 async function fileExists(path: string): Promise<boolean> {
@@ -108,14 +131,21 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
   const profiles: ProfileInfo[] = [];
 
   // Default profile is HERMES_HOME itself
-  const [defaultConfig, defaultHasEnv, defaultHasSoul, defaultSkills, defaultGw] =
-    await Promise.all([
-      readProfileConfig(HERMES_HOME),
-      fileExists(join(HERMES_HOME, ".env")),
-      fileExists(join(HERMES_HOME, "SOUL.md")),
-      countSkills(HERMES_HOME),
-      isGatewayRunning(HERMES_HOME),
-    ]);
+  const [
+    defaultConfig,
+    defaultHasEnv,
+    defaultHasSoul,
+    defaultSkills,
+    defaultGw,
+    defaultMeta,
+  ] = await Promise.all([
+    readProfileConfig(HERMES_HOME),
+    fileExists(join(HERMES_HOME, ".env")),
+    fileExists(join(HERMES_HOME, "SOUL.md")),
+    countSkills(HERMES_HOME),
+    isGatewayRunning(HERMES_HOME),
+    readProfileMeta("default"),
+  ]);
 
   profiles.push({
     name: "default",
@@ -128,6 +158,8 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
     hasSoul: defaultHasSoul,
     skillCount: defaultSkills,
     gatewayRunning: defaultGw,
+    color: defaultMeta.color || defaultColorForName("default"),
+    avatar: defaultMeta.avatar || null,
   });
 
   // Named profiles under ~/.hermes/profiles/
@@ -137,6 +169,7 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
       const profilePromises = dirs.map(async (name) => {
         // Skip dotfiles like .DS_Store so they don't get mistaken for profiles.
         if (name.startsWith(".")) return null;
+        if (!isValidNamedProfileName(name)) return null;
 
         const profilePath = join(PROFILES_DIR, name);
         const stat = await fs.stat(profilePath);
@@ -146,13 +179,14 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
         // We deliberately do NOT require config.yaml or .env to exist —
         // a freshly created profile may have neither yet, and filtering on
         // them silently hides it from the UI (issue #19).
-        const [config, hasEnvFile, hasSoul, skillCount, gwRunning] =
+        const [config, hasEnvFile, hasSoul, skillCount, gwRunning, meta] =
           await Promise.all([
             readProfileConfig(profilePath),
             fileExists(join(profilePath, ".env")),
             fileExists(join(profilePath, "SOUL.md")),
             countSkills(profilePath),
             isGatewayRunning(profilePath),
+            readProfileMeta(name),
           ]);
 
         return {
@@ -166,6 +200,8 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
           hasSoul: hasSoul,
           skillCount,
           gatewayRunning: gwRunning,
+          color: meta.color || defaultColorForName(name),
+          avatar: meta.avatar || null,
         } as ProfileInfo;
       });
 
@@ -183,13 +219,31 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
 
 export function createProfile(
   name: string,
-  clone: boolean,
+  cloneFrom: string | null,
 ): { success: boolean; error?: string } {
+  if (name === "default") {
+    return { success: false, error: "Cannot create the default profile" };
+  }
+  if (!isValidNamedProfileName(name)) {
+    return { success: false, error: PROFILE_NAME_ERROR };
+  }
+  // `cloneFrom` may be "default" (not a "named" profile) or any valid named
+  // profile; reject anything else so it can't reach the CLI as an argument.
+  if (
+    cloneFrom &&
+    cloneFrom !== "default" &&
+    !isValidNamedProfileName(cloneFrom)
+  ) {
+    return { success: false, error: PROFILE_NAME_ERROR };
+  }
+
   try {
-    const args = clone
-      ? ["profile", "create", name, "--clone"]
+    // `--clone-from <source>` copies that profile's config/keys/skills and
+    // implies `--clone`; omitting it creates a fresh profile.
+    const args = cloneFrom
+      ? ["profile", "create", name, "--clone-from", cloneFrom]
       : ["profile", "create", name];
-    execFileSync(HERMES_PYTHON, [HERMES_SCRIPT, ...args], {
+    execFileSync(HERMES_PYTHON, hermesCliArgs(args), {
       cwd: join(HERMES_HOME, "hermes-agent"),
       env: {
         ...process.env,
@@ -198,13 +252,12 @@ export function createProfile(
         HERMES_HOME,
       },
       stdio: "pipe",
-      timeout: 15000,
+      timeout: 30000,
+      ...HIDDEN_SUBPROCESS_OPTIONS,
     });
     return { success: true };
   } catch (err) {
-    const msg =
-      (err as { stderr?: Buffer }).stderr?.toString() || (err as Error).message;
-    return { success: false, error: msg.trim() };
+    return { success: false, error: commandErrorMessage(err) };
   }
 }
 
@@ -214,10 +267,14 @@ export function deleteProfile(name: string): {
 } {
   if (name === "default")
     return { success: false, error: "Cannot delete the default profile" };
+  if (!isValidNamedProfileName(name)) {
+    return { success: false, error: PROFILE_NAME_ERROR };
+  }
+
   try {
     execFileSync(
       HERMES_PYTHON,
-      [HERMES_SCRIPT, "profile", "delete", name, "--yes"],
+      hermesCliArgs(["profile", "delete", name, "--yes"]),
       {
         cwd: join(HERMES_HOME, "hermes-agent"),
         env: {
@@ -227,20 +284,23 @@ export function deleteProfile(name: string): {
           HERMES_HOME,
         },
         stdio: "pipe",
-        timeout: 15000,
+        timeout: 30000,
+        ...HIDDEN_SUBPROCESS_OPTIONS,
       },
     );
     return { success: true };
   } catch (err) {
-    const msg =
-      (err as { stderr?: Buffer }).stderr?.toString() || (err as Error).message;
-    return { success: false, error: msg.trim() };
+    return { success: false, error: commandErrorMessage(err) };
   }
 }
 
 export function setActiveProfile(name: string): void {
+  if (!isValidProfileName(name)) {
+    throw new Error(PROFILE_NAME_ERROR);
+  }
+
   try {
-    execFileSync(HERMES_PYTHON, [HERMES_SCRIPT, "profile", "use", name], {
+    execFileSync(HERMES_PYTHON, hermesCliArgs(["profile", "use", name]), {
       cwd: join(HERMES_HOME, "hermes-agent"),
       env: {
         ...process.env,
@@ -250,8 +310,29 @@ export function setActiveProfile(name: string): void {
       },
       stdio: "pipe",
       timeout: 10000,
+      ...HIDDEN_SUBPROCESS_OPTIONS,
     });
   } catch {
-    // ignore
+    // ignore — verified and repaired below
+  }
+
+  // The CLI validates against LOCAL profiles and raises when the name exists
+  // only on the SSH/remote host (or when there is no local install at all).
+  // That failure is swallowed above, so before this fallback the selection
+  // silently never persisted: ~/.hermes/active_profile kept its old value,
+  // every relaunch reset the UI to `default`, and activeSshProfile() scoped
+  // the unified SSH dashboard's data to the wrong profile. The desktop's
+  // source of truth is the local active_profile file (getActiveProfileNameSync),
+  // so when the CLI didn't move it, write it directly — `name` is already
+  // validated, and "default" is a plain value here (readers treat a missing
+  // file and the literal "default" identically).
+  if (getActiveProfileNameSync() !== name) {
+    try {
+      mkdirSync(HERMES_HOME, { recursive: true });
+      writeFileSync(join(HERMES_HOME, "active_profile"), `${name}\n`);
+    } catch {
+      // Filesystem write failed — nothing else to fall back to; the CLI
+      // attempt above already didn't persist it either.
+    }
   }
 }

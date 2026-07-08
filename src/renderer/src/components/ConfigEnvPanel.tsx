@@ -66,7 +66,13 @@ interface ConfigEnvPanelProps {
   onSaveKeys?: (env: Env, stripeKey: string, coinbaseKey: string) => Promise<void>;
 }
 
-function MaskedValue({ value, prefix }: { value: string; prefix: string }) {
+function MaskedValue({
+  value,
+  prefix,
+}: {
+  value: string;
+  prefix: string;
+}): React.JSX.Element {
   const [visible, setVisible] = useState(false);
   if (!value) return <span className="env-value-empty">Not configured</span>;
   if (visible) {
@@ -104,7 +110,7 @@ function ConfigEnvPanel({
 
   const panel = ENV_PANELS[selectedEnv];
 
-  const handleEnvSelect = (env: Env) => {
+  const handleEnvSelect = (env: Env): void => {
     setSelectedEnv(env);
     setEditingKeys(false);
     setSaveResult(null);
@@ -113,7 +119,7 @@ function ConfigEnvPanel({
     }
   };
 
-  const handleEditKeys = () => {
+  const handleEditKeys = (): void => {
     setStripeKeyDraft(ENV_PANELS[selectedEnv].stripeKey || "");
     setCoinbaseKeyDraft(ENV_PANELS[selectedEnv].coinbaseKey || "");
     setEditingKeys(true);
@@ -137,7 +143,7 @@ function ConfigEnvPanel({
     }
   }, [selectedEnv, stripeKeyDraft, coinbaseKeyDraft, onSaveKeys]);
 
-  const handleTestConnection = async () => {
+  const handleTestConnection = async (): Promise<void> => {
     setTesting(true);
     // In production: test connectivity to the env's API URL
     await new Promise((r) => setTimeout(r, 800));

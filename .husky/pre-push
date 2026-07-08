@@ -1,0 +1,22 @@
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [[ "$BRANCH" != "release" && "$BRANCH" != release/* ]]; then
+  exit 0
+fi
+
+# Git hooks run with a minimal PATH that omits user-local tool dirs, so bun
+# (installed under ~/.bun/bin) isn't found. Add common locations, then prefer
+# bun and fall back to npm.
+export PATH="$HOME/.bun/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+if command -v bun >/dev/null 2>&1; then
+  RUN="bun run"
+elif command -v npm >/dev/null 2>&1; then
+  RUN="npm run"
+else
+  echo "✗ Neither bun nor npm found on PATH. Push aborted."; exit 1
+fi
+
+echo "→ [pre-push] Release branch — running build..."
+$RUN build || { echo "✗ Build failed. Push aborted."; exit 1; }
+
+echo "✓ [pre-push] Build passed."

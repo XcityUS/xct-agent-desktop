@@ -42,19 +42,52 @@ function BalanceWidget({
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [balanceAnimating, setBalanceAnimating] = useState(false);
   const sessionStartRef = useRef<SessionUsage | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   // Mock history - in production this would come from actual transaction records
-  const [historyEntries] = useState<HistoryEntry[]>([
-    { id: "1", type: "deduction", amount: 2.50, description: "GPT-4 Turbo - 12,500 tokens", timestamp: Date.now() - 3600000 },
-    { id: "2", type: "deduction", amount: 1.20, description: "Claude 3 Sonnet - 8,200 tokens", timestamp: Date.now() - 7200000 },
-    { id: "3", type: "recharge", amount: 100.00, description: "Top up - XCT Pack", timestamp: Date.now() - 86400000 },
-    { id: "4", type: "deduction", amount: 3.80, description: "GPT-4 Turbo - 18,400 tokens", timestamp: Date.now() - 172800000 },
-  ]);
+  const [historyEntries] = useState<HistoryEntry[]>(() => {
+    const createdAt = Date.now();
+    return [
+      {
+        id: "1",
+        type: "deduction",
+        amount: 2.5,
+        description: "GPT-4 Turbo - 12,500 tokens",
+        timestamp: createdAt - 3600000,
+      },
+      {
+        id: "2",
+        type: "deduction",
+        amount: 1.2,
+        description: "Claude 3 Sonnet - 8,200 tokens",
+        timestamp: createdAt - 7200000,
+      },
+      {
+        id: "3",
+        type: "recharge",
+        amount: 100,
+        description: "Top up - XCT Pack",
+        timestamp: createdAt - 86400000,
+      },
+      {
+        id: "4",
+        type: "deduction",
+        amount: 3.8,
+        description: "GPT-4 Turbo - 18,400 tokens",
+        timestamp: createdAt - 172800000,
+      },
+    ];
+  });
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Fetch balance on mount (mock implementation)
   // In production, this would call window.desktopApi.cloud.getBalance()
   useEffect(() => {
-    async function fetchBalance() {
+    async function fetchBalance(): Promise<void> {
       try {
         // Mock balance for demo - in production use actual API
         // For now, simulate with a reasonable demo value
@@ -81,7 +114,7 @@ function BalanceWidget({
 
   // Track chat usage via IPC
   useEffect(() => {
-    const cleanup = window.hermesAPI.onChatUsage((usage) => {
+    const cleanup = window.hermesAPI.onChatUsage((_runId, usage) => {
       const entry: TokenUsageEntry = {
         model: "current", // Would be populated from actual usage data
         promptTokens: usage.promptTokens,
@@ -125,14 +158,14 @@ function BalanceWidget({
   };
 
   const formatTimeAgo = (timestamp: number): string => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    const seconds = Math.floor((now - timestamp) / 1000);
     if (seconds < 60) return "Just now";
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
-  const handleRecharge = () => {
+  const handleRecharge = (): void => {
     if (onRecharge) {
       onRecharge();
     } else {

@@ -92,8 +92,7 @@ export function getWalletBaseUrl(deps: WalletDeps = {}): string {
 }
 
 export function readWalletJwt(deps: WalletDeps = {}): string | undefined {
-  const v = deps.readJwt?.();
-  if (v) return v;
+  if (deps.readJwt) return deps.readJwt();
   // Phase 6: prefer the auth session's access token. Only fall back to the
   // legacy paste-token (`walletJwt`) when no auth session is present, so
   // existing pre-Phase-6 installs don't break before they sign in.

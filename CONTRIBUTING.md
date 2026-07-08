@@ -6,6 +6,7 @@ Thanks for your interest in contributing to Hermes Desktop! Whether it's a bug f
 
 - English: `CONTRIBUTING.md`
 - 简体中文: `CONTRIBUTING.zh-CN.md`
+- 日本語: `CONTRIBUTING.ja-JP.md`
 
 ## Getting Started
 
@@ -48,11 +49,20 @@ Thanks for your interest in contributing to Hermes Desktop! Whether it's a bug f
 3. Write a clear description of what you changed and why.
 4. If your PR addresses an open issue, reference it (e.g., `Fixes #42`).
 
+### Keep Pull Requests Small
+
+Please keep PRs small and focused — they are much easier to review and merge. PRs that touch too many files or bundle unrelated changes will likely be asked for splitting up or may not be accepted.
+
+- Stick to one logical change per PR (one fix, one feature, one refactor).
+- If you find yourself touching many unrelated files, split the work into multiple PRs.
+- Avoid bundling formatting/style sweeps with functional changes.
+- Smaller PRs get reviewed and merged faster.
+
 A maintainer will review your PR and may request changes. Once approved, it will be merged.
 
 ## Reporting Bugs
 
-Found a bug? [Open an issue](https://github.com/NousResearch/hermes-desktop/issues/new) with:
+Found a bug? [Open an issue](https://github.com/fathah/hermes-desktop/issues/new) with:
 
 - A clear title and description.
 - Steps to reproduce the issue.
@@ -61,7 +71,7 @@ Found a bug? [Open an issue](https://github.com/NousResearch/hermes-desktop/issu
 
 ## Requesting Features
 
-Have an idea? [Open an issue](https://github.com/NousResearch/hermes-desktop/issues/new) and describe:
+Have an idea? [Open an issue](https://github.com/fathah/hermes-desktop/issues/new) and describe:
 
 - The problem you're trying to solve.
 - How you'd like it to work.

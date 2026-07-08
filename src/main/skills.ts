@@ -1,15 +1,23 @@
 import { execFileSync } from "child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "fs";
-import { join } from "path";
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+} from "fs";
+import { isAbsolute, join, relative, resolve } from "path";
 import { homedir } from "os";
 import {
   HERMES_HOME,
   HERMES_PYTHON,
-  HERMES_SCRIPT,
   HERMES_REPO,
+  hermesCliArgs,
   getEnhancedPath,
 } from "./installer";
-import { profileHome } from "./utils";
+import { isValidNamedProfileName, profileHome } from "./utils";
+import { HIDDEN_SUBPROCESS_OPTIONS } from "./process-options";
 
 export interface InstalledSkill {
   name: string;
@@ -116,15 +124,56 @@ export function listInstalledSkills(profile?: string): InstalledSkill[] {
   );
 }
 
+function realOrResolved(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
+}
+
+function pathIsInside(parent: string, child: string): boolean {
+  const rel = relative(parent, child);
+  return rel === "" || (!!rel && !rel.startsWith("..") && !isAbsolute(rel));
+}
+
+function isProfileSkillFile(skillFile: string): boolean {
+  const profilesRoot = realOrResolved(join(HERMES_HOME, "profiles"));
+  if (!pathIsInside(profilesRoot, skillFile)) return false;
+
+  const parts = relative(profilesRoot, skillFile).split(/[\\/]+/);
+  return (
+    parts.length >= 4 &&
+    isValidNamedProfileName(parts[0]) &&
+    parts[1] === "skills"
+  );
+}
+
+function isAllowedSkillFile(skillFile: string): boolean {
+  const allowedRoots = [
+    join(HERMES_HOME, "skills"),
+    join(HERMES_REPO, "skills"),
+  ].map(realOrResolved);
+
+  return (
+    allowedRoots.some((root) => pathIsInside(root, skillFile)) ||
+    isProfileSkillFile(skillFile)
+  );
+}
+
 /**
  * Get the full content of a SKILL.md for the detail view.
  */
 export function getSkillContent(skillPath: string): string {
-  const skillFile = join(skillPath, "SKILL.md");
+  if (typeof skillPath !== "string" || skillPath.trim() === "") return "";
+
+  const skillFile = resolve(skillPath, "SKILL.md");
   if (!existsSync(skillFile)) return "";
 
   try {
-    return readFileSync(skillFile, "utf-8");
+    const realSkillFile = realpathSync(skillFile);
+    if (!isAllowedSkillFile(realSkillFile)) return "";
+    return readFileSync(realSkillFile, "utf-8");
   } catch {
     return "";
   }
@@ -137,7 +186,7 @@ export function searchSkills(query: string): SkillSearchResult[] {
   try {
     const output = execFileSync(
       HERMES_PYTHON,
-      [HERMES_SCRIPT, "skills", "browse", "--query", query, "--json"],
+      hermesCliArgs(["skills", "browse", "--query", query, "--json"]),
       {
         cwd: HERMES_REPO,
         env: {
@@ -148,6 +197,7 @@ export function searchSkills(query: string): SkillSearchResult[] {
         },
         stdio: ["ignore", "pipe", "pipe"],
         timeout: 30000,
+        ...HIDDEN_SUBPROCESS_OPTIONS,
       },
     );
 
@@ -233,17 +283,75 @@ export function listBundledSkills(): SkillSearchResult[] {
   );
 }
 
+/**
+ * Failure markers seen in `hermes skills install/uninstall` stdout when the
+ * CLI exits 0 despite the operation having failed. Observed live against
+ * Hermes Agent v0.14.0 (2026.5.16) on 2026-05-22:
+ *
+ *   $ hermes skills install concept-diagram --yes
+ *   Resolving 'concept-diagram'...
+ *   No exact match for 'concept-diagram'. Did you mean one of these?
+ *     concept-diagrams - official/creative/concept-diagrams
+ *   $ echo $?    -> 0
+ *
+ * Without this classifier the desktop would trust the 0 exit and report
+ * a successful install, leaving the user with a button that flashed and
+ * did nothing (issue #310).
+ */
+const SKILL_CLI_FAILURE_MARKERS: readonly RegExp[] = [
+  /\bNo exact match for\b/,
+  /\bNo skill named\b/,
+  /^Error:/m,
+];
+
+export interface SkillCliResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Classify the combined output of `hermes skills install/uninstall` after
+ * the subprocess has exited 0. The CLI exits 0 even on resolution failure
+ * (issue #310), so the exit code alone is not enough. When a known failure
+ * marker is present, surface the message (minus the leading
+ * "Resolving '...'" progress line) as `error` so the renderer can display
+ * it; otherwise treat the operation as successful.
+ *
+ * Pure — no I/O, no globals — so it is cheap to unit-test exhaustively.
+ */
+export function classifySkillCliOutput(
+  stdout: string,
+  stderr: string = "",
+): SkillCliResult {
+  const combined = `${stdout}\n${stderr}`;
+  if (SKILL_CLI_FAILURE_MARKERS.some((re) => re.test(combined))) {
+    return { success: false, error: extractSkillCliMessage(combined) };
+  }
+  return { success: true };
+}
+
+function extractSkillCliMessage(output: string): string {
+  // Strip the leading "Resolving '<name>'..." progress line — pure noise
+  // for the user. Keep the rest verbatim so suggestions like
+  // "Did you mean concept-diagrams" reach the renderer.
+  const lines = output
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !/^Resolving '.*'\.\.\.$/.test(l));
+  return lines.join("\n").trim() || output.trim();
+}
+
 export function installSkill(
   identifier: string,
   profile?: string,
-): { success: boolean; error?: string } {
+): SkillCliResult {
   try {
-    const args = [HERMES_SCRIPT, "skills", "install", identifier, "--yes"];
+    const args = hermesCliArgs(["skills", "install", identifier, "--yes"]);
     if (profile && profile !== "default") {
-      args.splice(1, 0, "-p", profile);
+      args.splice(process.platform === "win32" ? 2 : 1, 0, "-p", profile);
     }
 
-    execFileSync(HERMES_PYTHON, args, {
+    const stdout = execFileSync(HERMES_PYTHON, args, {
       cwd: HERMES_REPO,
       env: {
         ...process.env,
@@ -253,26 +361,32 @@ export function installSkill(
       },
       stdio: "pipe",
       timeout: 60000,
+      ...HIDDEN_SUBPROCESS_OPTIONS,
     });
-    return { success: true };
+    // Exit 0 alone is not proof of success — the CLI exits 0 on resolution
+    // failure too. Inspect the captured stdout for known failure markers
+    // (issue #310).
+    return classifySkillCliOutput(stdout?.toString() ?? "");
   } catch (err) {
-    const msg =
-      (err as { stderr?: Buffer }).stderr?.toString() || (err as Error).message;
-    return { success: false, error: msg.trim() };
+    const e = err as { stdout?: Buffer; stderr?: Buffer; message?: string };
+    const msg = (e.stderr?.toString() || e.message || "").trim();
+    return {
+      success: false,
+      error: msg || e.stdout?.toString()?.trim() || "Install failed.",
+    };
   }
 }
 
-export function uninstallSkill(
-  name: string,
-  profile?: string,
-): { success: boolean; error?: string } {
+export function uninstallSkill(name: string, profile?: string): SkillCliResult {
+  // Try the CLI first (updates hub lock files, handles complex cases).
+  let cliResult: SkillCliResult | undefined;
   try {
-    const args = [HERMES_SCRIPT, "skills", "uninstall", name, "--yes"];
+    const args = hermesCliArgs(["skills", "uninstall", name, "--yes"]);
     if (profile && profile !== "default") {
-      args.splice(1, 0, "-p", profile);
+      args.splice(process.platform === "win32" ? 2 : 1, 0, "-p", profile);
     }
 
-    execFileSync(HERMES_PYTHON, args, {
+    const stdout = execFileSync(HERMES_PYTHON, args, {
       cwd: HERMES_REPO,
       env: {
         ...process.env,
@@ -282,11 +396,52 @@ export function uninstallSkill(
       },
       stdio: "pipe",
       timeout: 30000,
+      ...HIDDEN_SUBPROCESS_OPTIONS,
     });
-    return { success: true };
+    cliResult = classifySkillCliOutput(stdout?.toString() ?? "");
   } catch (err) {
-    const msg =
-      (err as { stderr?: Buffer }).stderr?.toString() || (err as Error).message;
-    return { success: false, error: msg.trim() };
+    const e = err as { stdout?: Buffer; stderr?: Buffer; message?: string };
+    const msg = (e.stderr?.toString() || e.message || "").trim();
+    cliResult = {
+      success: false,
+      error: msg || e.stdout?.toString()?.trim() || "Uninstall failed.",
+    };
   }
+
+  // Direct filesystem cleanup: some skills (bundled ones, name-mismatches)
+  // aren't found by the CLI's uninstall but still live on disk. Walk the
+  // profile skills directory, find the matching skill, and rm -rf it.
+  const skillsDir = join(profileHome(profile), "skills");
+  if (existsSync(skillsDir)) {
+    try {
+      for (const category of readdirSync(skillsDir)) {
+        const categoryPath = join(skillsDir, category);
+        if (!statSync(categoryPath).isDirectory()) continue;
+        for (const entry of readdirSync(categoryPath)) {
+          const entryPath = join(categoryPath, entry);
+          if (!statSync(entryPath).isDirectory()) continue;
+
+          const skillFile = join(entryPath, "SKILL.md");
+          if (!existsSync(skillFile)) continue;
+
+          let skillName: string;
+          try {
+            const content = readFileSync(skillFile, "utf-8").slice(0, 4000);
+            skillName = parseSkillFrontmatter(content).name || entry;
+          } catch {
+            skillName = entry;
+          }
+
+          if (skillName === name || entry === name) {
+            rmSync(entryPath, { recursive: true, force: true });
+            return { success: true };
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return cliResult ?? { success: false, error: "Uninstall failed." };
 }

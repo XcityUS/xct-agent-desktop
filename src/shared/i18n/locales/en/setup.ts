@@ -20,6 +20,7 @@ export default {
   customUrlHint: "OpenAI-compatible endpoint, e.g. https://api.example.com/v1",
   localPresets: {
     lmstudio: "LM Studio",
+    atomicchat: "Atomic Chat",
     ollama: "Ollama",
     vllm: "vLLM",
     llamacpp: "llama.cpp",
@@ -28,7 +29,9 @@ export default {
     together: "Together AI",
     fireworks: "Fireworks",
     cerebras: "Cerebras",
+    atlascloud: "AtlasCloud",
     mistral: "Mistral",
+    aimlapi: "AIML API",
   },
   serverPreset: "Server Preset",
   localGroupLabel: "Local Servers",
@@ -47,6 +50,8 @@ export default {
   continue: "Continue",
   saving: "Saving...",
   apiKeyLabel: "{{provider}} API Key",
+  noApiKeyRequired:
+    "{{provider}} does not require an API key. Hermes will use your local CLI/OAuth configuration.",
   localNoKeyNeeded: "No API key needed",
   localLlm: "Local LLM",
   modelBaseUrlPlaceholder: "http://localhost:1234/v1",

@@ -6,6 +6,7 @@ export default {
   retryInstall: "重新安装",
   terminalInstallHint: "也可以先通过终端安装，然后再回来：",
   recheck: "我已安装完成，重新检查",
+  switchToLocal: "切换到本地模式",
   installSizeHint: "这将安装所需组件（约 2 GB）",
   copyInstallCommand: "复制安装命令",
   dividerOr: "或",
@@ -17,5 +18,6 @@ export default {
   remoteApiKeyPlaceholder: "Bearer token (API_SERVER_KEY)",
   testingConnection: "测试连接中...",
   connect: "连接",
-  remoteHint: "如果服务器接受未认证的请求（如通过 SSH 隧道到 localhost），请留空密钥。",
+  remoteHint:
+    "如果服务器接受未认证的请求（如通过 SSH 隧道到 localhost），请留空密钥。",
 } as const;

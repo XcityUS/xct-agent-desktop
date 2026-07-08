@@ -6,6 +6,7 @@
 
 - 英文：`CONTRIBUTING.md`
 - 简体中文：`CONTRIBUTING.zh-CN.md`
+- 日本語：`CONTRIBUTING.ja-JP.md`
 
 ## 快速开始
 
@@ -48,11 +49,20 @@
 3. 清楚描述你改了什么，以及为什么这样改。
 4. 如果你的 PR 解决了某个已有 issue，请在描述中引用它（例如：`Fixes #42`）。
 
+### 保持 Pull Request 精简
+
+请保持 PR 小而聚焦——这样更容易审核和合并。触及过多文件或捆绑了不相关改动的 PR 可能会被要求拆分，甚至可能不被接受。
+
+- 每个 PR 只做一类逻辑改动（一个修复、一个功能、一次重构）。
+- 如果你发现自己改了很多不相关的文件，请将工作拆分成多个 PR。
+- 避免将格式化/样式改动与功能改动混在一起提交。
+- 更小的 PR 能更快得到审核和合并。
+
 维护者会审核你的 PR，并可能提出修改建议。审核通过后，PR 会被合并。
 
 ## 报告 Bug
 
-如果你发现了 bug，请在 GitHub 上 [提交 issue](https://github.com/NousResearch/hermes-desktop/issues/new)，并尽量包含：
+如果你发现了 bug，请在 GitHub 上 [提交 issue](https://github.com/fathah/hermes-desktop/issues/new)，并尽量包含：
 
 - 清晰的标题和描述
 - 复现步骤
@@ -61,7 +71,7 @@
 
 ## 功能请求
 
-如果你有新想法，也欢迎 [提交 issue](https://github.com/NousResearch/hermes-desktop/issues/new)，并描述：
+如果你有新想法，也欢迎 [提交 issue](https://github.com/fathah/hermes-desktop/issues/new)，并描述：
 
 - 你想解决的问题
 - 你希望它如何工作

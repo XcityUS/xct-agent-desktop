@@ -1,55 +1,100 @@
-<img width="100%" alt="HERMES DESKTOP" src="https://github.com/user-attachments/assets/80585955-3bae-4aee-af90-a1e61757ccb8" />
+<img width="100%" alt="HERMES DESKTOP" src="assets/header.webp" />
 
 <br/>
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
-  <a href="https://discord.gg/NousResearch"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://x.com/HermesOneApp"><img src="https://img.shields.io/badge/Follow Us-000000?style=for-the-badge&logo=x" alt="Twitter"></a>
+  <a href="https://discord.gg/Fqu72h8z"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://github.com/fathah/hermes-desktop/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://github.com/fathah/hermes-desktop/releases/"><img src="https://img.shields.io/badge/Download-Releases-FF6600?style=for-the-badge" alt="Releases"></a>
+  <a href="https://hermesone.org"><img src="https://img.shields.io/badge/Download-Releases-FF6600?style=for-the-badge" alt="Releases"></a>
 <a href="https://github.com/fathah/hermes-desktop/stargazers">
   <img src="https://img.shields.io/github/stars/fathah/hermes-desktop?style=for-the-badge&color=FFD700&label=Stars" alt="Stars">
 </a>
   <a href="https://github.com/fathah/hermes-desktop/releases/">
   <img src="https://img.shields.io/github/downloads/fathah/hermes-desktop/total?style=for-the-badge&color=00B496&label=Total%20Downloads" alt="Downloads">
 </a>
+   <a href="https://bankr.bot/launches/0xfda75f77a22b4f4b783bbbb21915ef64d149bba3">
+  <img src="https://img.shields.io/badge/Token-$HD-purple?style=for-the-badge&logo=ethereum" alt="Downloads">
+</a>
+
 </p>
+
+<p align="center">
+  <a href="README.md">English</a> ·
+  <a href="README.zh-CN.md">简体中文</a> ·
+  <a href="README.ja-JP.md">日本語</a> ·
+  <a href="README.es-LATAM.md">Español (LATAM)</a>
+</p>
+
+<p align="center">
+
+
+
+ <a href="https://www.star-history.com/fathah/hermes-desktop">
+  <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=fathah/hermes-desktop&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=fathah/hermes-desktop" />
+   <img alt="Star History Rank" src="https://api.star-history.com/badge?repo=fathah/hermes-desktop" />
+  </picture>
+ </a>
+</p>
+
 
 > **This project is in active development.** Features may change, and some things might break. If you run into a problem or have an idea, [open an issue](https://github.com/fathah/hermes-desktop/issues). Contributions are welcome!
 
-## Languages
-
-- English: `README.md`
-- 简体中文: `README.zh-CN.md`
-
-Hermes Desktop is a native desktop app for installing, configuring, and chatting with [Hermes Agent](https://github.com/NousResearch/hermes-agent) — a self-improving AI assistant with tool use, multi-platform messaging, and a closed learning loop.
+Hermes One is a community maintained native desktop app for installing, configuring, and chatting with [Hermes Agent](https://github.com/NousResearch/hermes-agent) — a self-improving AI assistant with tool use, multi-platform messaging, and a closed learning loop.
 
 Instead of managing the CLI by hand, the app walks through install, provider setup, and day-to-day usage in one place. It uses the official Hermes install script, stores Hermes in `~/.hermes`, and gives you a GUI for chat, sessions, profiles, memory, skills, tools, scheduling, messaging gateways, and more.
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/D1D41ZEKFO)
+
+## Sponsors
+
+> [Want to appear here?](mailto:fathah@hermesone.org)
+
+<details open>
+<summary>Click to collapse</summary>
+<br/>
+<table>
+
+<tr>
+<td width="180"><a href="ttps://www.atlascloud.ai/?utm_source=github&utm_medium=link&utm_campaign=hermes-desktop"><img src="assets/partners/atlascloud.webp" alt="Atlas Cloud" width=""></a></td>
+<td> <a href="https://www.atlascloud.ai/?utm_source=github&utm_medium=link&utm_campaign=hermes-desktop">Atlas Cloud</a> is a full-modal, OpenAI-compatible AI inference platform. Use it in Hermes One by selecting <b>Atlas Cloud</b> as your provider. The base URL is pre-configured automatically. </td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://www.greptile.com/?utm_source=hermes-desktop"><img src="assets/partners/greptile.webp" alt="Greptile" width=""></a></td>
+<td> <a href="https://www.greptile.com/?utm_source=hermes-desktop">Greptile</a> is an AI code reviewer. It reviews and tests pull requests with full context of the codebase. It catches bugs, flags regressions, and leaves inline review comments on every PR automatically. </td>
+</tr>
+
+</table>
+
+</details>
+
 ## Install
 
-Download the latest build from the [Releases](https://github.com/fathah/hermes-desktop/releases/) page.
+<a href="https://hermesone.org"><img width="380" alt="Download Now" src="previews/download.webp" /></a>
 
-| Platform       | File                    |
-| -------------- | ----------------------- |
-| macOS          | `.dmg`                  |
-| Linux (any)    | `.AppImage`             |
-| Linux (Debian) | `.deb`                  |
-| Linux (Fedora) | `.rpm`                  |
-| Windows        | `.exe` (NSIS installer) |
-
-### Windows (winget)
-
-Once the manifest has been accepted into [`microsoft/winget-pkgs`](https://github.com/microsoft/winget-pkgs), you can install with:
-
-```powershell
-winget install NousResearch.HermesDesktop
-```
-
-Until then, download the `.exe` from the Releases page.
+<details>
+<summary>Windows</summary>
+<br/>
 
 > **Windows users:** The installer is not code-signed. Windows SmartScreen will warn on first launch — click "More info" → "Run anyway".
 
-### Fedora (RPM)
+> **WSL users:** If the installer stalls at `Switching to root user to install dependencies...`, Playwright is waiting for a sudo password that has no TTY to read from. Grant passwordless sudo for the install, then revert when finished:
+>
+> ```bash
+> echo "$USER ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/hermes-install
+> # …re-run the installer; once it finishes:
+> sudo rm /etc/sudoers.d/hermes-install
+> ```
+>
+> Tracked in [#109](https://github.com/fathah/hermes-desktop/issues/109).
+
+</details>
+
+<details>
+<summary>Fedora (RPM)</summary>
+<br/>
 
 ```bash
 sudo dnf install ./hermes-desktop-<version>.rpm
@@ -57,21 +102,42 @@ sudo dnf install ./hermes-desktop-<version>.rpm
 
 > **Fedora users:** The `.rpm` is not GPG-signed. If your system enforces signature checking, append `--nogpgcheck` to the install command. Auto-update is not supported for `.rpm` builds (limitation of `electron-updater`); reinstall the new `.rpm` to update.
 
-### macOS
+</details>
 
-> **macOS users:** The app is not code-signed or notarized. macOS will block it on first launch. To fix this, run the following after installing:
->
-> ```bash
-> xattr -cr "/Applications/Hermes Agent.app"
-> ```
->
-> Or right-click the app → **Open** → click **Open** in the confirmation dialog.
+## Preview
+
+<table>
+<tr>
+<td width="50%" align="center"><b>Chat</b><br/><img width="100%" alt="Chat" src="previews/chat.png" /></td>
+<td width="50%" align="center"><b>Profiles</b><br/><img width="100%" alt="Profiles" src="previews/profiles.png" /></td>
+</tr>
+<tr>
+<td width="50%" align="center"><b>Models</b><br/><img width="100%" alt="Models" src="previews/models.png" /></td>
+<td width="50%" align="center"><b>Providers</b><br/><img width="100%" alt="Providers" src="previews/providers.png" /></td>
+</tr>
+<tr>
+<td width="50%" align="center"><b>Tools</b><br/><img width="100%" alt="Tools" src="previews/tools.png" /></td>
+<td width="50%" align="center"><b>Discover</b><br/><img width="100%" alt="Skills" src="previews/discover.png" /></td>
+</tr>
+<tr>
+<td width="50%" align="center"><b>Schedules</b><br/><img width="100%" alt="Schedules" src="previews/schedules.png" /></td>
+<td width="50%" align="center"><b>Gateway</b><br/><img width="100%" alt="Gateway" src="previews/gateway.png" /></td>
+</tr>
+<tr>
+<td width="50%" align="center"><b>Persona</b><br/><img width="100%" alt="Persona" src="previews/persona.png" /></td>
+<td width="50%" align="center"><b>Kanban</b><br/><img width="100%" alt="Kanban" src="previews/kanban.png" /></td>
+</tr>
+<tr>
+<td width="50%" align="center"><b>Office</b><br/><img width="100%" alt="Office" src="previews/office.png" /></td>
+<td width="50%" align="center"><b>Settings</b><br/><img width="100%" alt="Settings" src="previews/settings.png" /></td>
+</tr>
+</table>
 
 ## Features
 
 - **Guided first-run install** for Hermes Agent with progress tracking and dependency resolution
 - **Local or remote backend** — run Hermes locally on `127.0.0.1:8642`, or connect the desktop app to a remote Hermes API server with URL + API key
-- **Multi-provider support** — OpenRouter, Anthropic, OpenAI, Google (Gemini), xAI (Grok), Nous Portal, Qwen, MiniMax, Hugging Face, Groq, and local OpenAI-compatible endpoints (LM Studio, Ollama, vLLM, llama.cpp)
+- **Multi-provider support** — OpenRouter, Anthropic, OpenAI, Google (Gemini), xAI (Grok), Nous Portal, Qwen, MiniMax, Hugging Face, Groq, and local OpenAI-compatible endpoints (LM Studio, Atomic Chat, Ollama, vLLM, llama.cpp)
 - **Streaming chat UI** with SSE streaming, tool progress indicators, markdown rendering, and syntax highlighting
 - **Token usage tracking** — live prompt/completion token counts and cost display in the chat footer, plus a `/usage` slash command
 - **22 slash commands** — `/new`, `/clear`, `/fast`, `/web`, `/image`, `/browse`, `/code`, `/shell`, `/usage`, `/help`, `/tools`, `/skills`, `/model`, `/memory`, `/persona`, `/version`, `/compact`, `/compress`, `/undo`, `/retry`, `/debug`, `/status`, and more
@@ -89,23 +155,6 @@ sudo dnf install ./hermes-desktop-<version>.rpm
 - **Auto-updater** — check for and install updates via electron-updater
 - **i18n ready** — internationalization framework with English locale covering all screens, ready for community translations
 - **Test suite** — SSE parser, IPC handlers, preload API surface, installer utilities, and constants validation with Vitest
-
-## Preview
-
-<table>
-<tr>
-<td width="50%" align="center"><b>Office</b><br/><img width="100%" alt="Office" src="https://github.com/user-attachments/assets/214bfa60-48ec-4449-be40-370628205147" /></td>
-<td width="50%" align="center"><b>Chat</b><br/><img width="100%" alt="Chat" src="https://github.com/user-attachments/assets/ca84a56c-4d14-4775-96bb-c725069988be" /></td>
-</tr>
-<tr>
-<td width="50%" align="center"><b>Profiles</b><br/><img width="100%" alt="Profiles" src="https://github.com/user-attachments/assets/bd812e4a-bbdc-4141-b3a8-1ab5b0e561d4" /></td>
-<td width="50%" align="center"><b>Tools</b><br/><img width="100%" alt="Tools" src="https://github.com/user-attachments/assets/ad051fbe-055d-40d2-b6dd-959c522412d2" /></td>
-</tr>
-<tr>
-<td width="50%" align="center"><b>Settings</b><br/><img width="100%" alt="Settings" src="https://github.com/user-attachments/assets/b3f7e0d8-b087-4935-b57c-f8db30491f2e" /></td>
-<td width="50%" align="center"><b>Skills</b><br/><img width="100%" alt="Skills" src="https://github.com/user-attachments/assets/508c3501-52eb-419d-8cfd-06268875ff62" /></td>
-</tr>
-</table>
 
 ## How It Works
 
@@ -139,6 +188,12 @@ In local mode, chat requests go through `http://127.0.0.1:8642` with SSE streami
 
 ## Supported Providers
 
+### Sponsors
+
+| Provider        | Notes                                                                                                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Atlas Cloud** | OpenAI-compatible gateway — DeepSeek, Qwen, GLM, Kimi, MiniMax and more ([atlascloud.ai](https://www.atlascloud.ai/?utm_source=github&utm_medium=link&utm_campaign=hermes-desktop)) |
+
 ### LLM Providers
 
 | Provider            | Notes                                    |
@@ -155,7 +210,7 @@ In local mode, chat requests go through `http://127.0.0.1:8642` with SSE streami
 | **Groq**            | Fast inference (voice/STT)               |
 | **Local/Custom**    | Any OpenAI-compatible endpoint           |
 
-Local presets are included for LM Studio, Ollama, vLLM, and llama.cpp.
+Local presets are included for LM Studio, Atomic Chat, Ollama, vLLM, and llama.cpp.
 
 ### Messaging Platforms
 
@@ -164,55 +219,6 @@ Telegram, Discord, Slack, WhatsApp, Signal, Matrix/Element, Mattermost, Email (I
 ### Tool Integrations
 
 Exa Search, Parallel API, Tavily, Firecrawl, FAL.ai (image generation), Honcho, Browserbase, Weights & Biases, and Tinker.
-
-## Development
-
-### Prerequisites
-
-- Node.js and npm
-- A Unix-like shell environment for the Hermes installer
-- Network access for downloading Hermes during first-run install
-
-### Install dependencies
-
-```bash
-npm install
-```
-
-### Start the app in development
-
-```bash
-npm run dev
-```
-
-### Run checks
-
-```bash
-npm run lint
-npm run typecheck
-```
-
-### Run tests
-
-```bash
-npm run test
-npm run test:watch
-```
-
-### Build the desktop app
-
-```bash
-npm run build
-```
-
-Platform packaging:
-
-```bash
-npm run build:mac
-npm run build:win
-npm run build:linux
-npm run build:rpm    # Fedora/RHEL .rpm only
-```
 
 ## First-Time Setup
 
@@ -228,6 +234,7 @@ Supported setup paths in the UI:
 Local presets are included for:
 
 - LM Studio
+- Atomic Chat
 - Ollama
 - vLLM
 - llama.cpp
@@ -242,16 +249,86 @@ Hermes files are managed in:
 - `~/.hermes/state.db` — session history database
 - `~/.hermes/cron/jobs.json` — scheduled tasks
 
-## Tech Stack
+## Secrets provider
 
-- **Electron** 39 — cross-platform desktop shell
-- **React** 19 — UI framework
-- **TypeScript** 5.9 — type safety across main and renderer processes
-- **Tailwind CSS** 4 — utility-first styling
-- **Vite** 7 + electron-vite — fast dev server and build tooling
-- **better-sqlite3** — local session storage with FTS5 full-text search
-- **i18next** — internationalization framework
-- **Vitest** — test runner
+By default, API keys live in `~/.hermes/.env` (the **env** provider). No
+configuration is needed — this is byte-for-byte the historical behavior, and
+nothing changes for you.
+
+If you'd rather not keep keys in a plaintext `.env`, the opt-in **command**
+provider resolves them by running a helper command you configure. Resolution
+order everywhere is: `process.env` → `.env` → provider → unset.
+
+Per-key helper (the requested key name arrives as `$HERMES_SECRET_KEY`):
+
+```yaml
+# ~/.hermes/config.yaml
+secrets:
+  provider: command
+  command: secret-tool lookup hermes "$HERMES_SECRET_KEY"
+```
+
+Or a helper that dumps a dotenv blob (e.g. a vault that unseals into tmpfs):
+
+```yaml
+secrets:
+  provider: command
+  command: "cat /run/user/1000/hermes-secrets.env"
+```
+
+The helper's stdout may be either a single bare value (per-key helpers) or
+`KEY=VALUE` lines (dotenv dumps); both shapes are auto-detected.
+
+### Vault / secret manager integration (no TPM required)
+
+The `command` provider is **vault-agnostic** — it runs whatever helper you
+configure and reads its stdout. The helper is the only thing that needs to
+talk to your secret store. If you don't have a TPM-sealed keyfile, any of
+these work without code changes to Hermes:
+
+- **KeePassXC (password-only DB, no keyfile):** point `secrets.command` at a
+  small `kpxc-export.sh` script that does
+  `keepassxc-cli ls ~/secrets/hermes.kdbx <<<"$KPXC_PASSWORD"` and dumps
+  the relevant group as dotenv. Prompt the user for the master password
+  once per session.
+- **GnuPG with a passphrase-only key:** `gpg --batch --passphrase-fd 0
+--decrypt ~/.keys/api-keys.gpg` works directly as the `command` value.
+  Pass the passphrase via a file descriptor or env var, never argv.
+- **`pass` (the standard unix password manager):**
+  `command: "pass show hermes/$HERMES_SECRET_KEY"` for a per-key helper,
+  or a small wrapper script for a dotenv dump.
+- **`secret-tool` (libsecret/Gnome Keyring):**
+  `command: "secret-tool lookup hermes $HERMES_SECRET_KEY"` (already
+  shown above as the canonical per-key example).
+- **Bitwarden CLI:** `bw get item "$HERMES_SECRET_KEY" | jq -r .notes`
+  (after `bw unlock` in the session).
+- **1Password CLI:** `op read "op://vault/$HERMES_SECRET_KEY/credential"`.
+- **Plain env file with user-managed permissions:**
+  `command: "cat ~/.config/hermes/secrets.env"` with `chmod 600` and
+  the file owned by your user. Not as secure as a vault, but better than
+  a world-readable `.env`.
+
+The point: **any helper that prints a value (per-key) or a dotenv blob
+(list-mode) on stdout will work**, and Hermes imposes a 3-second timeout
+and 1 MiB output cap on the helper so a misbehaving one can't wedge the
+app. The provider makes no assumptions about TPM, FIDO2, smart cards,
+or platform keychains.
+
+Security model:
+
+- The command string is your own configuration — same trust level as `.env`.
+  It runs via `/bin/sh -c`, so the command provider is POSIX-only
+  (Linux/macOS); Windows stays on the env provider.
+- The helper inherits the process environment plus `HERMES_SECRET_KEY`; the
+  key name is passed as data, never interpolated into the shell string.
+- Hard 3-second timeout (resolution is synchronous on the main process — keep
+  helpers fast and non-interactive), 1 MiB output cap, and stderr is discarded.
+- Resolved values are never logged or written to disk; failures degrade to
+  "key unset", logging only exit code/signal.
+- The gateway-spawn broadcast uses a single `list()` call, never a per-key
+  helper loop.
+
+Source of truth: [`src/main/secrets/`](src/main/secrets/).
 
 ## Notes
 
@@ -262,9 +339,11 @@ Hermes files are managed in:
 
 ## Contributing
 
-Contributions are welcome! Check out the [Contributing Guide](CONTRIBUTING.md) to get started. If you're not sure where to begin, take a look at the [open issues](https://github.com/NousResearch/hermes-desktop/issues). Found a bug or have a feature request? [File an issue](https://github.com/NousResearch/hermes-desktop/issues/new).
+Contributions are welcome! Check out the [Contributing Guide](CONTRIBUTING.md) to get started. If you're not sure where to begin, take a look at the [open issues](https://github.com/fathah/hermes-desktop/issues). Found a bug or have a feature request? [File an issue](https://github.com/fathah/hermes-desktop/issues/new).
 
 ## Related Project
+
+This repo is not affiliated to **Nous Research**. This is a community maintained project.
 
 For the core agent, docs, and CLI workflows, see the main Hermes Agent repository:
 

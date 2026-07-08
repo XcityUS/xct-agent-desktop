@@ -34,13 +34,14 @@ function CloudModeToggle({
   // Load initial connection config
   useEffect(() => {
     window.hermesAPI.getConnectionConfig().then((conn) => {
-      setMode(conn.mode);
+      const nextMode = conn.mode === "remote" ? "remote" : "local";
+      setMode(nextMode);
       setRemoteUrl(conn.remoteUrl);
-      setApiKey(conn.apiKey);
-      if (conn.mode === "remote" && conn.remoteUrl) {
+      setApiKey("");
+      if (nextMode === "remote" && conn.remoteUrl) {
         setStatus("connecting");
         // Auto-test connection on load if in remote mode
-        testConnection(conn.remoteUrl, conn.apiKey);
+        testConnection(conn.remoteUrl, "");
       } else {
         setStatus("disconnected");
       }
@@ -132,7 +133,7 @@ function CloudModeToggle({
       setTransitionDirection(null);
     }, 400);
     
-    await window.hermesAPI.setConnectionConfig(mode, remoteUrl, apiKey);
+    await window.hermesAPI.setConnectionConfig("remote", remoteUrl, apiKey);
     setStatus("connecting");
     onModeChange?.("remote");
     // Test connection after saving

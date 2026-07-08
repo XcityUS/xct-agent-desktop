@@ -5,6 +5,8 @@ import {
   GATEWAY_SECTIONS,
   SETTINGS_SECTIONS,
   LOCAL_PRESETS,
+  OPENAI_COMPATIBLE_BASE_URLS,
+  DASHSCOPE_ENDPOINTS,
   THEME_OPTIONS,
 } from "../src/renderer/src/constants";
 
@@ -21,13 +23,21 @@ describe("PROVIDERS", () => {
   it("includes all v0.9.0 providers", () => {
     const values = PROVIDERS.options.map((o) => o.value);
     expect(values).toContain("openrouter");
+    expect(values).toContain("aimlapi");
     expect(values).toContain("anthropic");
     expect(values).toContain("openai");
+    expect(values).toContain("openai-codex");
     expect(values).toContain("google");
     expect(values).toContain("xai");
+    expect(values).toContain("xiaomi");
     expect(values).toContain("nous");
-    expect(values).toContain("qwen");
+    expect(values).toContain("alibaba");
+    expect(values).toContain("qwen-oauth");
     expect(values).toContain("minimax");
+    expect(values).toContain("lmstudio");
+    expect(values).toContain("ollama");
+    expect(values).toContain("vllm");
+    expect(values).toContain("llamacpp");
     expect(values).toContain("custom");
   });
 
@@ -64,6 +74,14 @@ describe("PROVIDERS", () => {
   it("no duplicate setup IDs", () => {
     const ids = PROVIDERS.setup.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("offers DashScope setup through Alibaba with a mainland default", () => {
+    const dashscope = PROVIDERS.setup.find((s) => s.id === "alibaba");
+    expect(dashscope).toBeTruthy();
+    expect(dashscope?.configProvider).toBe("alibaba");
+    expect(dashscope?.envKey).toBe("DASHSCOPE_API_KEY");
+    expect(dashscope?.baseUrl).toBe(DASHSCOPE_ENDPOINTS[0].baseUrl);
   });
 });
 
@@ -169,7 +187,9 @@ describe("GATEWAY_SECTIONS", () => {
 describe("SETTINGS_SECTIONS", () => {
   it("includes LLM Providers section", () => {
     expect(
-      SETTINGS_SECTIONS.find((s) => s.title === "constants.sectionLlmProviders"),
+      SETTINGS_SECTIONS.find(
+        (s) => s.title === "constants.sectionLlmProviders",
+      ),
     ).toBeTruthy();
   });
 
@@ -177,6 +197,8 @@ describe("SETTINGS_SECTIONS", () => {
     const allKeys = SETTINGS_SECTIONS.flatMap((s) => s.items.map((i) => i.key));
     expect(allKeys).toContain("GOOGLE_API_KEY");
     expect(allKeys).toContain("XAI_API_KEY");
+    expect(allKeys).toContain("XIAOMI_API_KEY");
+    expect(allKeys).toContain("AIMLAPI_API_KEY");
   });
 
   it("includes existing keys (backward compat)", () => {
@@ -202,7 +224,44 @@ describe("LOCAL_PRESETS", () => {
   it("has expected presets", () => {
     const ids = LOCAL_PRESETS.map((p) => p.id);
     expect(ids).toContain("lmstudio");
+    expect(ids).toContain("aimlapi");
     expect(ids).toContain("ollama");
+    expect(ids).toContain("vllm");
+    expect(ids).toContain("llamacpp");
+  });
+
+  it("exposes every local preset as a provider dropdown option", () => {
+    const options = new Set(PROVIDERS.options.map((o) => o.value));
+    for (const preset of LOCAL_PRESETS.filter((p) => p.group === "local")) {
+      expect(options.has(preset.id)).toBe(true);
+      expect(PROVIDERS.labels[preset.id]).toBeTruthy();
+    }
+  });
+
+  // Every preset chip routes through OPENAI_COMPATIBLE_BASE_URLS in the
+  // Providers picker; a missing entry collapses the picker and mis-saves the
+  // provider (regression: AtlasCloud/LM Studio fell through to native routing).
+  it("maps every preset id to an OpenAI-compatible base URL", () => {
+    for (const preset of LOCAL_PRESETS) {
+      expect(OPENAI_COMPATIBLE_BASE_URLS[preset.id]).toBeTruthy();
+    }
+  });
+});
+
+describe("DASHSCOPE_ENDPOINTS", () => {
+  it("offers mainland and international DashScope endpoints", () => {
+    expect(DASHSCOPE_ENDPOINTS).toEqual([
+      {
+        id: "cn",
+        name: "constants.dashscopeChinaEndpoint",
+        baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      },
+      {
+        id: "intl",
+        name: "constants.dashscopeIntlEndpoint",
+        baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+      },
+    ]);
   });
 });
 

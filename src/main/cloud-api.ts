@@ -208,7 +208,7 @@ export function chatCompletion(
     stop: params.stop,
   });
 
-  async function execute() {
+  async function execute(): Promise<void> {
     try {
       const response = await fetch(url, {
         method: "POST",

@@ -81,13 +81,52 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Rebuild native dependencies for target arch
+        run: npx electron-builder install-app-deps --arch=${{ matrix.arch }}
+
       - name: Build app
+        env:
+          VITE_ANALYTICS_BASE_URL: ${{ vars.VITE_ANALYTICS_BASE_URL }}
+          VITE_ANALYTICS_API_KEY: ${{ secrets.VITE_ANALYTICS_API_KEY }}
         run: npm run build
+
+      - name: Stage App Store Connect API key
+        env:
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ASC_API_KEY_BASE64:-}" ]; then
+            echo "ASC_API_KEY secret is missing — notarization will fail." >&2
+            exit 1
+          fi
+          KEY_DIR="$RUNNER_TEMP/appstore"
+          mkdir -p "$KEY_DIR"
+          KEY_PATH="$KEY_DIR/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_BASE64" | base64 --decode > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "APPLE_API_KEY=$KEY_PATH" >> "$GITHUB_ENV"
 
       - name: Package macOS artifacts
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.ASC_ISSUER_ID }}
         run: npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never
+
+      - name: Verify native module architecture
+        run: |
+          set -euo pipefail
+          NODE_FILE="dist/mac-${{ matrix.arch }}/Hermes One.app/Contents/Resources/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+          if [ ! -f "$NODE_FILE" ]; then
+            NODE_FILE="dist/mac/Hermes One.app/Contents/Resources/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+          fi
+          file "$NODE_FILE"
+          case "${{ matrix.arch }}" in
+            x64) file "$NODE_FILE" | grep -q "x86_64" ;;
+            arm64) file "$NODE_FILE" | grep -q "arm64" ;;
+          esac
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -97,13 +136,22 @@ jobs:
             dist/*.dmg
             dist/*.zip
             dist/*.blockmap
-            dist/latest-mac.yml
 
   release_linux:
-    name: Build Linux
+    name: Build Linux (${{ matrix.arch }})
     needs: prepare
     if: needs.prepare.outputs.tag_exists == 'false'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runs-on: ubuntu-latest
+            targets: AppImage deb rpm
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+            targets: AppImage
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -117,24 +165,40 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Rebuild native dependencies for target arch
+        run: npx electron-builder install-app-deps --arch=${{ matrix.arch }}
+
       - name: Build app
+        env:
+          VITE_ANALYTICS_BASE_URL: ${{ vars.VITE_ANALYTICS_BASE_URL }}
+          VITE_ANALYTICS_API_KEY: ${{ secrets.VITE_ANALYTICS_API_KEY }}
         run: npm run build
 
       - name: Install rpmbuild
+        if: contains(matrix.targets, 'rpm')
         run: sudo apt-get update && sudo apt-get install -y rpm
 
       - name: Package Linux artifacts
-        run: npx electron-builder --linux AppImage deb rpm --publish never
+        run: npx electron-builder --linux ${{ matrix.targets }} --${{ matrix.arch }} --publish never
 
-      - name: Upload artifacts
+      - name: Upload x64 artifacts
+        if: matrix.arch == 'x64'
         uses: actions/upload-artifact@v4
         with:
-          name: linux-artifacts
+          name: linux-x64-artifacts
           path: |
             dist/*.AppImage
             dist/*.deb
             dist/*.rpm
             dist/latest-linux.yml
+
+      - name: Upload arm64 artifacts
+        if: matrix.arch == 'arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64-artifacts
+          path: |
+            dist/*.AppImage
 
   release_windows:
     name: Build Windows
@@ -155,10 +219,13 @@ jobs:
         run: npm ci
 
       - name: Build app
+        env:
+          VITE_ANALYTICS_BASE_URL: ${{ vars.VITE_ANALYTICS_BASE_URL }}
+          VITE_ANALYTICS_API_KEY: ${{ secrets.VITE_ANALYTICS_API_KEY }}
         run: npm run build
 
       - name: Package Windows artifacts
-        run: npx electron-builder --win nsis --x64 --publish never
+        run: npx electron-builder --win nsis portable --x64 --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -203,7 +270,8 @@ jobs:
 
   publish:
     name: Publish Release
-    needs: [prepare, release_mac, release_linux, release_windows, generate_winget]
+    needs:
+      [prepare, release_mac, release_linux, release_windows, generate_winget]
     if: needs.prepare.outputs.is_dry_run == 'false' && needs.prepare.outputs.tag_exists == 'false'
     runs-on: ubuntu-latest
     steps:
@@ -223,6 +291,70 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Generate macOS update metadata
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          node <<'NODE'
+          const crypto = require("crypto");
+          const fs = require("fs");
+          const path = require("path");
+
+          const artifactsDir = path.join(process.cwd(), "artifacts");
+          const version = process.env.VERSION;
+          const zipNames = fs
+            .readdirSync(artifactsDir)
+            .filter(
+              (name) =>
+                name.startsWith(`hermes-desktop-${version}-`) &&
+                name.endsWith("-mac.zip"),
+            )
+            .sort((a, b) => {
+              if (a.includes("-x64-")) return -1;
+              if (b.includes("-x64-")) return 1;
+              return a.localeCompare(b);
+            });
+
+          if (
+            zipNames.length < 2 ||
+            !zipNames.some((name) => name.includes("-x64-")) ||
+            !zipNames.some((name) => name.includes("-arm64-"))
+          ) {
+            throw new Error(
+              `Expected x64 and arm64 macOS zips, found: ${zipNames.join(", ")}`,
+            );
+          }
+
+          const files = zipNames.map((name) => {
+            const filePath = path.join(artifactsDir, name);
+            return {
+              url: name,
+              sha512: crypto
+                .createHash("sha512")
+                .update(fs.readFileSync(filePath))
+                .digest("base64"),
+              size: fs.statSync(filePath).size,
+            };
+          });
+          const primary = files.find((file) => file.url.includes("-x64-")) || files[0];
+          const releaseDate = new Date().toISOString();
+          const lines = [
+            `version: ${version}`,
+            "files:",
+            ...files.flatMap((file) => [
+              `  - url: ${file.url}`,
+              `    sha512: ${file.sha512}`,
+              `    size: ${file.size}`,
+            ]),
+            `path: ${primary.url}`,
+            `sha512: ${primary.sha512}`,
+            `releaseDate: '${releaseDate}'`,
+            "",
+          ];
+
+          fs.writeFileSync(path.join(artifactsDir, "latest-mac.yml"), lines.join("\n"));
+          NODE
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -240,3 +372,26 @@ jobs:
             artifacts/latest.yml
             artifacts/latest-linux.yml
             artifacts/latest-mac.yml
+
+  rebuild_landing_page:
+    name: Rebuild landing page
+    needs: [prepare, publish]
+    # Only after a real release that actually published a new tag.
+    if: needs.prepare.outputs.is_dry_run == 'false' && needs.prepare.outputs.tag_exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for release to propagate
+        # Give GitHub's releases/latest API time to settle before the landing
+        # page rebuilds and re-fetches the latest version.
+        run: sleep 300
+
+      - name: Trigger landing page deploy
+        # SITE_DEPLOY_TOKEN is a fine-grained PAT with "Actions: read and write"
+        # on fathah/hermes-landing-page. The default GITHUB_TOKEN cannot dispatch
+        # workflows in another repository.
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DEPLOY_TOKEN }}
+        run: |
+          gh workflow run deploy.yml \
+            --repo fathah/hermes-landing-page \
+            --ref main

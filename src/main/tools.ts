@@ -3,6 +3,7 @@ import { join } from "path";
 import { profileHome, safeWriteFile } from "./utils";
 import { t } from "../shared/i18n";
 import { getAppLocale } from "./locale";
+import { DEFAULT_MESSAGING_PLATFORM_TOOLSETS } from "../shared/messaging-platforms";
 
 export interface ToolsetInfo {
   key: string;
@@ -20,6 +21,11 @@ const TOOLSET_DEFS: {
     key: "web",
     labelKey: "tools.web.label",
     descriptionKey: "tools.web.description",
+  },
+  {
+    key: "x_search",
+    labelKey: "tools.x_search.label",
+    descriptionKey: "tools.x_search.description",
   },
   {
     key: "browser",
@@ -42,6 +48,11 @@ const TOOLSET_DEFS: {
     descriptionKey: "tools.code_execution.description",
   },
   {
+    key: "computer_use",
+    labelKey: "tools.computer_use.label",
+    descriptionKey: "tools.computer_use.description",
+  },
+  {
     key: "vision",
     labelKey: "tools.vision.label",
     descriptionKey: "tools.vision.description",
@@ -50,6 +61,11 @@ const TOOLSET_DEFS: {
     key: "image_gen",
     labelKey: "tools.image_gen.label",
     descriptionKey: "tools.image_gen.description",
+  },
+  {
+    key: "video_gen",
+    labelKey: "tools.video_gen.label",
+    descriptionKey: "tools.video_gen.description",
   },
   {
     key: "tts",
@@ -111,7 +127,7 @@ function localizeToolDefs(
 }
 
 /**
- * Parse the platform_toolsets.cli list from config.yaml.
+ * Parse one platform_toolsets.<platform> list from config.yaml.
  * The yaml structure looks like:
  *   platform_toolsets:
  *     cli:
@@ -120,51 +136,78 @@ function localizeToolDefs(
  *       ...
  * We use line-by-line parsing to stay consistent with config.ts (no yaml dep).
  */
-function parseEnabledToolsets(configContent: string): Set<string> {
-  const enabled = new Set<string>();
+function parsePlatformToolsets(
+  configContent: string,
+): Record<string, Set<string>> {
+  const toolsets: Record<string, Set<string>> = {};
   const lines = configContent.split("\n");
 
   let inPlatformToolsets = false;
-  let inCli = false;
+  let currentPlatform: string | null = null;
 
   for (const line of lines) {
     const trimmed = line.trimEnd();
-
-    // Detect section headers
     if (/^\s*platform_toolsets\s*:/.test(trimmed)) {
       inPlatformToolsets = true;
-      inCli = false;
+      currentPlatform = null;
       continue;
     }
 
-    if (inPlatformToolsets && /^\s+cli\s*:/.test(trimmed)) {
-      inCli = true;
-      continue;
-    }
-
-    // Exit sections on un-indent
-    if (inPlatformToolsets && /^\S/.test(trimmed) && !/^\s*$/.test(trimmed)) {
+    if (inPlatformToolsets && /^\S/.test(trimmed) && trimmed !== "") {
       inPlatformToolsets = false;
-      inCli = false;
+      currentPlatform = null;
       continue;
     }
 
-    if (inCli && /^\s{4}\S/.test(trimmed) && !/^\s{4,}-/.test(trimmed)) {
-      // A new key at the same level as cli — we've left the cli section
-      inCli = false;
+    if (!inPlatformToolsets) continue;
+
+    const platformMatch = trimmed.match(
+      /^\s+([A-Za-z0-9_-]+)\s*:\s*(\[\])?\s*(?:#.*)?$/,
+    );
+    if (platformMatch) {
+      const platformName = platformMatch[1];
+      currentPlatform = platformMatch[2] ? null : platformName;
+      toolsets[platformName] ??= new Set<string>();
       continue;
     }
 
-    // Parse list items inside cli:
-    if (inCli) {
-      const match = trimmed.match(/^\s+-\s+["']?(\w+)["']?/);
+    if (currentPlatform) {
+      const match = trimmed.match(/^\s+-\s+["']?([A-Za-z0-9_-]+)["']?/);
       if (match) {
-        enabled.add(match[1]);
+        toolsets[currentPlatform].add(match[1]);
       }
     }
   }
 
-  return enabled;
+  return toolsets;
+}
+
+function parseEnabledToolsets(
+  configContent: string,
+  platform = "cli",
+): Set<string> {
+  return parsePlatformToolsets(configContent)[platform] ?? new Set<string>();
+}
+
+function validatePlatformToolsetKey(platform: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(platform);
+}
+
+export function getPlatformToolsets(
+  profile?: string,
+): Record<string, string[]> {
+  const configFile = join(profileHome(profile), "config.yaml");
+  if (!existsSync(configFile)) return {};
+  try {
+    const content = readFileSync(configFile, "utf-8");
+    return Object.fromEntries(
+      Object.entries(parsePlatformToolsets(content)).map(
+        ([platform, values]) => [platform, Array.from(values).sort()],
+      ),
+    );
+  } catch {
+    return {};
+  }
 }
 
 export function getToolsets(profile?: string): ToolsetInfo[] {
@@ -195,12 +238,50 @@ export function setToolsetEnabled(
   enabled: boolean,
   profile?: string,
 ): boolean {
+  return setPlatformToolsetEnabled("cli", key, enabled, profile);
+}
+
+export function setMessagingPlatformToolsetEnabled(
+  platform: string,
+  key: string,
+  enabled: boolean,
+  profile?: string,
+): boolean {
+  return setPlatformToolsetEnabled(
+    platform,
+    key,
+    enabled,
+    profile,
+    DEFAULT_MESSAGING_PLATFORM_TOOLSETS,
+  );
+}
+
+function setPlatformToolsetEnabled(
+  platform: string,
+  key: string,
+  enabled: boolean,
+  profile?: string,
+  defaultEnabled: string[] = [],
+): boolean {
   const configFile = join(profileHome(profile), "config.yaml");
   if (!existsSync(configFile)) return false;
+  if (
+    !validatePlatformToolsetKey(platform) ||
+    !validatePlatformToolsetKey(key)
+  ) {
+    return false;
+  }
 
   try {
     const content = readFileSync(configFile, "utf-8");
-    const currentEnabled = parseEnabledToolsets(content);
+    const parsed = parsePlatformToolsets(content);
+    const hasPlatformConfig = Object.prototype.hasOwnProperty.call(
+      parsed,
+      platform,
+    );
+    const currentEnabled = hasPlatformConfig
+      ? new Set(parsed[platform])
+      : new Set(defaultEnabled);
 
     if (enabled) {
       currentEnabled.add(key);
@@ -214,16 +295,17 @@ export function setToolsetEnabled(
       .map((t) => `      - ${t}`)
       .join("\n");
 
-    const newSection = `  cli:\n${toolsetLines}`;
+    const newSection = `  ${platform}:\n${toolsetLines}`;
+    const platformHeader = new RegExp(`^\\s+${platform}\\s*:`);
 
     // Check if platform_toolsets section exists
     if (content.includes("platform_toolsets")) {
-      // Replace existing cli section within platform_toolsets
+      // Replace existing platform section within platform_toolsets
       const lines = content.split("\n");
       const result: string[] = [];
       let inPlatformToolsets = false;
-      let inCli = false;
-      let cliInserted = false;
+      let inTargetPlatform = false;
+      let platformInserted = false;
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -235,24 +317,24 @@ export function setToolsetEnabled(
           continue;
         }
 
-        if (inPlatformToolsets && /^\s+cli\s*:/.test(trimmed)) {
-          inCli = true;
-          // Output the new cli section
+        if (inPlatformToolsets && platformHeader.test(trimmed)) {
+          inTargetPlatform = true;
+          // Output the new platform section
           result.push(newSection);
-          cliInserted = true;
+          platformInserted = true;
           continue;
         }
 
-        if (inCli) {
+        if (inTargetPlatform) {
           // Skip old list items
           if (/^\s+-\s/.test(trimmed)) continue;
-          // End of cli section
+          // End of platform section
           if (
             /^\s{4}\S/.test(trimmed) ||
             /^\S/.test(trimmed) ||
             trimmed === ""
           ) {
-            inCli = false;
+            inTargetPlatform = false;
             if (
               trimmed === "" &&
               i + 1 < lines.length &&
@@ -269,13 +351,18 @@ export function setToolsetEnabled(
 
         if (inPlatformToolsets && /^\S/.test(trimmed) && trimmed !== "") {
           inPlatformToolsets = false;
-          if (!cliInserted) {
+          if (!platformInserted) {
             result.push(newSection);
-            cliInserted = true;
+            platformInserted = true;
           }
         }
 
         result.push(line);
+      }
+
+      // Trailing platform_toolsets (no next block) never triggers inline insertion
+      if (inPlatformToolsets && !platformInserted) {
+        result.push(newSection);
       }
 
       safeWriteFile(configFile, result.join("\n"));

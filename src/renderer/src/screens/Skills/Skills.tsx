@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import toast from "react-hot-toast";
 import { Search, X, Download, Trash, Refresh } from "../../assets/icons";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { useI18n } from "../../components/useI18n";
@@ -20,11 +21,20 @@ interface BundledSkill {
 
 interface SkillsProps {
   profile?: string;
+  // When embedded inside the Capabilities screen: installed-only, no page
+  // title/subtitle (the parent tab already labels the section).
+  embedded?: boolean;
+  // Embedded "Browse" action — navigates to the Discover → Skills tab.
+  onBrowse?: () => void;
 }
 
 type Tab = "installed" | "browse";
 
-function Skills({ profile }: SkillsProps): React.JSX.Element {
+function Skills({
+  profile,
+  embedded = false,
+  onBrowse,
+}: SkillsProps): React.JSX.Element {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("installed");
   const [installedSkills, setInstalledSkills] = useState<InstalledSkill[]>([]);
@@ -50,9 +60,11 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
 
   const loadAll = useCallback(async (): Promise<void> => {
     setLoading(true);
-    await Promise.all([loadInstalled(), loadBundled()]);
+    await Promise.all(
+      embedded ? [loadInstalled()] : [loadInstalled(), loadBundled()],
+    );
     setLoading(false);
-  }, [loadInstalled, loadBundled]);
+  }, [loadInstalled, loadBundled, embedded]);
 
   useEffect(() => {
     loadAll();
@@ -77,6 +89,7 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
   }
 
   async function handleUninstall(name: string): Promise<void> {
+    if (!window.confirm(t("skills.uninstallConfirm", { name }))) return;
     setActionInProgress(name);
     setError("");
     const result = await window.hermesAPI.uninstallSkill(name, profile);
@@ -84,8 +97,11 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
     if (result.success) {
       setDetailSkill(null);
       await loadInstalled();
+      toast.success(t("skills.uninstallSuccess", { name }));
     } else {
-      setError(result.error || t("skills.uninstallFailed"));
+      const msg = result.error || t("skills.uninstallFailed");
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -182,16 +198,18 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
         </div>
       )}
 
-      <div className="skills-header">
-        <div>
-          <h2 className="skills-title">{t("skills.title")}</h2>
-          <p className="skills-subtitle">{t("skills.subtitle")}</p>
+      {!embedded && (
+        <div className="skills-header">
+          <div>
+            <h2 className="skills-title">{t("skills.title")}</h2>
+            <p className="skills-subtitle">{t("skills.subtitle")}</p>
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={loadAll}>
+            <Refresh size={14} />
+            {t("skills.refresh")}
+          </button>
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={loadAll}>
-          <Refresh size={14} />
-          {t("skills.refresh")}
-        </button>
-      </div>
+      )}
 
       {error && (
         <div className="skills-error">
@@ -203,46 +221,70 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
       )}
 
       {/* Tabs */}
-      <div className="skills-tabs">
-        <button
-          className={`skills-tab ${tab === "installed" ? "active" : ""}`}
-          onClick={() => setTab("installed")}
-        >
-          {t("skills.installedTab")} ({installedSkills.length})
-        </button>
-        <button
-          className={`skills-tab ${tab === "browse" ? "active" : ""}`}
-          onClick={() => setTab("browse")}
-        >
-          {t("skills.browseTab")} ({bundledSkills.length})
-        </button>
-      </div>
+      {!embedded && (
+        <div className="skills-tabs">
+          <button
+            className={`skills-tab ${tab === "installed" ? "active" : ""}`}
+            onClick={() => setTab("installed")}
+          >
+            {t("skills.installedTab")} ({installedSkills.length})
+          </button>
+          <button
+            className={`skills-tab ${tab === "browse" ? "active" : ""}`}
+            onClick={() => setTab("browse")}
+          >
+            {t("skills.browseTab")} ({bundledSkills.length})
+          </button>
+        </div>
+      )}
 
       {/* Search */}
-      <div className="skills-search">
-        <Search size={15} />
-        <input
-          ref={searchRef}
-          className="skills-search-input"
-          type="text"
-          placeholder={
-            tab === "installed"
-              ? t("skills.filterInstalled")
-              : t("skills.search")
-          }
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {search && (
-          <button
-            className="btn-ghost skills-search-clear"
-            onClick={() => {
-              setSearch("");
-              searchRef.current?.focus();
-            }}
-          >
-            <X size={14} />
-          </button>
+      <div className={embedded ? "skills-search-row" : undefined}>
+        <div className="skills-search">
+          <Search size={15} />
+          <input
+            ref={searchRef}
+            className="skills-search-input"
+            type="text"
+            placeholder={
+              tab === "installed"
+                ? t("skills.filterInstalled")
+                : t("skills.search")
+            }
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button
+              className="btn-ghost skills-search-clear"
+              onClick={() => {
+                setSearch("");
+                searchRef.current?.focus();
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        {embedded && (
+          <>
+            {onBrowse && (
+              <button
+                className="btn btn-secondary btn-sm skills-search-refresh"
+                onClick={onBrowse}
+              >
+                <Download size={14} />
+                {t("skills.browseTab")}
+              </button>
+            )}
+            <button
+              className="btn btn-secondary btn-sm skills-search-refresh"
+              onClick={loadAll}
+            >
+              <Refresh size={14} />
+              {t("skills.refresh")}
+            </button>
+          </>
         )}
       </div>
 

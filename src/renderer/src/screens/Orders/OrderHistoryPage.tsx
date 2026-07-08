@@ -122,7 +122,7 @@ function OrderHistoryPage({ onBack }: OrderHistoryPageProps): React.JSX.Element 
     };
   }, [orders]);
 
-  const handleExportCSV = () => {
+  const handleExportCSV = (): void => {
     const headers = ["Order ID", "Created", "Status", "Credits", "Amount USD", "Provider", "Method"];
     const rows = filtered.map((o) => [
       o.id,
