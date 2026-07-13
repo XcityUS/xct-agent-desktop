@@ -1082,6 +1082,9 @@ const hermesAPI = {
       model: string;
       baseUrl: string;
       providerLabel?: string;
+      contextLength?: number;
+      capabilities?: string[];
+      modalities?: { input?: string[]; output?: string[] };
       createdAt: number;
     }>
   > => ipcRenderer.invoke("list-models"),
@@ -1122,6 +1125,52 @@ const hermesAPI = {
     contextLength?: number | null,
   ): Promise<boolean> =>
     ipcRenderer.invoke("update-model", id, fields, contextLength),
+
+  // Shared model definitions (per-model-id metadata, local-only).
+  listModelDefinitions: (): Promise<
+    Array<{
+      model: string;
+      name?: string;
+      contextLength?: number;
+      capabilities?: string[];
+      modalities?: { input?: string[]; output?: string[] };
+      createdAt: number;
+      updatedAt: number;
+    }>
+  > => ipcRenderer.invoke("list-model-definitions"),
+
+  getModelDefinition: (
+    model: string,
+  ): Promise<{
+    model: string;
+    name?: string;
+    contextLength?: number;
+    capabilities?: string[];
+    modalities?: { input?: string[]; output?: string[] };
+    createdAt: number;
+    updatedAt: number;
+  } | null> => ipcRenderer.invoke("get-model-definition", model),
+
+  setModelDefinition: (
+    model: string,
+    patch: {
+      name?: string;
+      contextLength?: number | null;
+      capabilities?: string[];
+      modalities?: { input?: string[]; output?: string[] };
+    },
+  ): Promise<{
+    model: string;
+    name?: string;
+    contextLength?: number;
+    capabilities?: string[];
+    modalities?: { input?: string[]; output?: string[] };
+    createdAt: number;
+    updatedAt: number;
+  } | null> => ipcRenderer.invoke("set-model-definition", model, patch),
+
+  removeModelDefinition: (model: string): Promise<boolean> =>
+    ipcRenderer.invoke("remove-model-definition", model),
 
   onModelLibraryChanged: (callback: () => void): (() => void) => {
     const handler = (): void => callback();

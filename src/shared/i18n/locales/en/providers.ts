@@ -35,6 +35,11 @@ export default {
     title: "Models",
     empty: "No models yet.",
     addPlaceholder: "Add another model ID…",
+    displayName: "Display name",
+    contextWindow: "Context window (tokens)",
+    contextWindowPlaceholder: "Auto",
+    contextWindowHint:
+      "Shared across every provider serving this model. Leave blank to auto-detect.",
   },
   oauth: {
     sectionTitle: "Subscription / OAuth Plans",

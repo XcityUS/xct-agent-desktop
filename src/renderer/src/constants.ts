@@ -87,6 +87,8 @@ export const PROVIDERS = {
   ],
 
   labels: {
+    hermesone: "Hermes One",
+    atlascloud: "AtlasCloud",
     openrouter: "constants.openrouterName",
     aimlapi: "constants.aimlapiName",
     anthropic: "constants.anthropicName",
@@ -401,6 +403,36 @@ export const OPENAI_COMPATIBLE_BASE_URLS: Record<string, string> = {
   llamacpp: "http://localhost:8080/v1",
 };
 
+/**
+ * Reverse-map a stored (provider, baseUrl) back to its display brand id.
+ *
+ * OpenAI-compatible providers (Hermes One, Groq, DeepSeek, …) are persisted as
+ * `provider: "custom"` + their base URL because the agent can't resolve their
+ * brand id. For display — grouping in the chat model picker, the provider
+ * summary/logo — map that base URL back to the brand id via
+ * `OPENAI_COMPATIBLE_BASE_URLS`, so e.g. an `inference.hermesone.org` model shows
+ * under "Hermes One" instead of the generic "OpenAI Compatible / Local" bucket.
+ *
+ * Routing is unaffected: callers keep the raw `provider`/`baseUrl` for
+ * `setModelConfig`; only the label/grouping uses the returned brand.
+ */
+export function displayBrandFromConfig(
+  provider: string,
+  baseUrl: string,
+): string {
+  // Legacy configs store `qwen` (the pre-#825 grid id); the agent aliases
+  // qwen → alibaba, so land those on the DashScope brand.
+  if (provider === "qwen") return "alibaba";
+  if (provider !== "custom" || !baseUrl) return provider;
+  const norm = (u: string): string =>
+    (u || "").trim().replace(/\/+$/, "").toLowerCase();
+  const target = norm(baseUrl);
+  const match = Object.entries(OPENAI_COMPATIBLE_BASE_URLS).find(
+    ([, url]) => norm(url) === target,
+  );
+  return match ? match[0] : provider;
+}
+
 export const LOCAL_PRESETS: LocalPreset[] = [
   {
     id: "lmstudio",
@@ -502,9 +534,10 @@ export const LOCAL_PRESETS: LocalPreset[] = [
 // keeps the per-provider Models manager saving entries exactly the way the
 // Models screen / Providers tab would. Unknown keys fall back to a bare `custom`
 // route so any provider can still hold models.
-export function providerRouteForEnvKey(
-  envKey: string,
-): { provider: string; baseUrl: string } {
+export function providerRouteForEnvKey(envKey: string): {
+  provider: string;
+  baseUrl: string;
+} {
   // The setup array is a heterogeneous literal (not every entry carries
   // configProvider/baseUrl), so read it through a partial shape.
   type SetupRoute = {

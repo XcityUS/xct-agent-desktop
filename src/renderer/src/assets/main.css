@@ -463,8 +463,8 @@
   font-style: normal;
   font-display: swap;
   /* Scope Cairo to Arabic glyphs only; Latin etc. falls through to Manrope */
-  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF,
-    U+FB50-FDFF, U+FE70-FEFF;
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 @font-face {
   font-family: "Cairo";
@@ -472,8 +472,8 @@
   font-weight: 500;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF,
-    U+FB50-FDFF, U+FE70-FEFF;
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 @font-face {
   font-family: "Cairo";
@@ -481,8 +481,8 @@
   font-weight: 600;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF,
-    U+FB50-FDFF, U+FE70-FEFF;
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 @font-face {
   font-family: "Cairo";
@@ -490,8 +490,8 @@
   font-weight: 700;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF,
-    U+FB50-FDFF, U+FE70-FEFF;
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 
 /* ----- Shared Tokens ----- */
@@ -502,7 +502,8 @@
   --radius-xl: 20px;
   --transition: 150ms ease;
   --font-sans:
-    "Cairo", "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    "Cairo", "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
   --font-mono:
     "SF Mono", "Fira Code", "JetBrains Mono", Menlo, Consolas, monospace;
 }
@@ -1227,6 +1228,12 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+.settings-section-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 /* Read-only provider summary shown when a provider is configured and the grid
@@ -6273,12 +6280,19 @@ body {
 }
 
 .chat-model-group-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 10px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 6px 8px 4px;
+}
+.chat-model-group-label .brand-logo {
+  opacity: 0.75;
+  flex-shrink: 0;
 }
 
 .chat-model-option {
@@ -6347,6 +6361,190 @@ body {
   position: sticky;
   top: 0;
   background: var(--bg-secondary);
+}
+
+/* ── Two-pane model picker (provider rail + model list) ── */
+.chat-model-dropdown-wide {
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: 440px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chat-model-dropdown-wide .chat-model-search-input {
+  position: static;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.chat-model-panes {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+.chat-model-rail {
+  width: 172px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-inline-end: 6px;
+  border-inline-end: 1px solid var(--border);
+}
+.chat-model-rail-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.chat-model-rail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: start;
+  transition: background var(--transition);
+}
+.chat-model-rail-item:hover {
+  background: var(--bg-hover);
+}
+.chat-model-rail-item.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.chat-model-rail-item .brand-logo {
+  flex-shrink: 0;
+}
+.chat-model-rail-all-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.chat-model-rail-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-model-rail-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.chat-model-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+.chat-model-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: start;
+  transition: background var(--transition);
+}
+.chat-model-row:hover {
+  background: var(--bg-hover);
+}
+.chat-model-row.active {
+  background: var(--accent-subtle);
+}
+.chat-model-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.chat-model-row-title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-model-row-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-model-row-check {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.chat-model-list-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.chat-model-configure {
+  flex-shrink: 0;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+.chat-model-configure:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Auto-hide the pane scrollbars: the thumb is transparent at rest and fades in
+   while the pointer is over the pane (i.e. when the user is scrolling it), so no
+   persistent bar sits in the picker. The 6px gutter is already reserved by the
+   global rule, so revealing the thumb causes no layout shift. */
+.chat-model-list::-webkit-scrollbar-thumb,
+.chat-model-rail-list::-webkit-scrollbar-thumb {
+  background: transparent;
+  transition: background 0.2s ease;
+}
+.chat-model-list:hover::-webkit-scrollbar-thumb,
+.chat-model-rail-list:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+.chat-model-list::-webkit-scrollbar-thumb:hover,
+.chat-model-rail-list::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
 }
 
 /* ========================================================================
@@ -6976,7 +7174,8 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.provider-model-chip-del {
+.provider-model-chip-del,
+.provider-model-chip-edit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -6989,7 +7188,8 @@ body {
   border-radius: 50%;
   transition: color 0.15s ease;
 }
-.provider-model-chip-del:hover {
+.provider-model-chip-del:hover,
+.provider-model-chip-edit:hover {
   color: var(--text-primary);
 }
 

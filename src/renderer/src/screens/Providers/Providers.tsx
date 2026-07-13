@@ -11,9 +11,10 @@ import BrandLogo from "../../components/common/BrandLogo";
 import OAuthLoginModal from "../../components/OAuthLoginModal";
 import HermesAccountModal from "../../components/HermesAccountModal";
 import ProviderKeysSection from "../../components/ProviderKeysSection";
-import Models, { type ModelsTab } from "../Models/Models";
+import RegistryBrowserModal from "../../components/RegistryBrowserModal";
+import AuxiliaryTasksSection from "../../components/AuxiliaryTasksSection";
 import { useDiscoveredModels } from "../../hooks/useDiscoveredModels";
-import { KeyRound, Layers, Workflow, User } from "../../assets/icons";
+import { KeyRound, Workflow, User, Sparkles } from "../../assets/icons";
 import { ChevronDown, X } from "lucide-react";
 import { customProviderEnvKey } from "../../../../shared/url-key-map";
 import type { HermesAccount } from "../../../../shared/account";
@@ -134,9 +135,11 @@ function Providers({
   visible?: boolean;
 }): React.JSX.Element {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<"providers" | ModelsTab>(
+  const [activeTab, setActiveTab] = useState<"providers" | "auxiliary">(
     "providers",
   );
+  // Curated-registry browser (relocated from the removed Models screen).
+  const [registryOpen, setRegistryOpen] = useState(false);
 
   // Env / API keys
   const [env, setEnv] = useState<Record<string, string>>({});
@@ -598,13 +601,6 @@ function Providers({
           {t("navigation.providers")}
         </button>
         <button
-          className={`models-tab ${activeTab === "models" ? "active" : ""}`}
-          onClick={() => setActiveTab("models")}
-        >
-          <Layers size={16} />
-          {t("models.title")}
-        </button>
-        <button
           className={`models-tab ${activeTab === "auxiliary" ? "active" : ""}`}
           onClick={() => setActiveTab("auxiliary")}
         >
@@ -668,15 +664,25 @@ function Providers({
                   </span>
                 )}
               </span>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => void openModelPicker()}
-              >
-                {isConfigured
-                  ? t("common.change")
-                  : t("providers.model.select")}
-              </button>
+              <div className="settings-section-title-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setRegistryOpen(true)}
+                >
+                  <Sparkles size={14} />
+                  {t("models.browseRegistry")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => void openModelPicker()}
+                >
+                  {isConfigured
+                    ? t("common.change")
+                    : t("providers.model.select")}
+                </button>
+              </div>
             </div>
 
             {isConfigured ? (
@@ -1018,22 +1024,10 @@ function Providers({
         </>
       )}
 
-      {activeTab === "models" && (
-        <Models
-          activeTab="models"
-          embedded
-          showTabs={false}
-          visible={visible}
-        />
-      )}
+      {activeTab === "auxiliary" && <AuxiliaryTasksSection visible={visible} />}
 
-      {activeTab === "auxiliary" && (
-        <Models
-          activeTab="auxiliary"
-          embedded
-          showTabs={false}
-          visible={visible}
-        />
+      {registryOpen && (
+        <RegistryBrowserModal onClose={() => setRegistryOpen(false)} />
       )}
     </div>
   );
