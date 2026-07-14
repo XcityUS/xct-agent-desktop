@@ -1,9 +1,4 @@
-import {
-  app,
-  BrowserWindow,
-  session,
-  shell,
-} from "electron";
+import { app, BrowserWindow, session, shell } from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import icon from "../../../resources/icon.png?asset";
@@ -49,6 +44,7 @@ export function startMainProcess(): void {
     getMainWindow: () => mainWindow,
     notifyConnectionConfigChanged,
     notifyModelLibraryChanged,
+    notifyCustomProvidersChanged,
     openExternalUrl,
   });
 
@@ -193,6 +189,10 @@ function notifyModelLibraryChanged(): void {
   mainWindow?.webContents.send("model-library-changed");
 }
 
+function notifyCustomProvidersChanged(): void {
+  mainWindow?.webContents.send("custom-providers-changed");
+}
+
 function openExternalUrl(rawUrl: unknown): void {
   if (!isAllowedExternalUrl(rawUrl)) {
     console.warn("[SECURITY] Blocked unsafe external URL");
@@ -240,7 +240,11 @@ function createWindow(): void {
   setGatewayPromptParent(() => mainWindow);
 
   mainWindow.webContents.on("render-process-gone", (_event, details) => {
-    console.error("[CRASH] Renderer process gone:", details.reason, details.exitCode);
+    console.error(
+      "[CRASH] Renderer process gone:",
+      details.reason,
+      details.exitCode,
+    );
   });
   mainWindow.webContents.on("console-message", (details) => {
     // Electron ≥35 passes a single event object (level is now a string);
@@ -252,27 +256,40 @@ function createWindow(): void {
       );
     }
   });
-  mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
-    console.error("[LOAD FAIL]", errorCode, errorDescription);
-  });
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription) => {
+      console.error("[LOAD FAIL]", errorCode, errorDescription);
+    },
+  );
   mainWindow.webContents.setWindowOpenHandler((details) => {
     openExternalUrl(details.url);
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    if (isAllowedAppNavigationUrl(url, rendererHtmlPath, is.dev ? process.env["ELECTRON_RENDERER_URL"] : undefined)) return;
+    if (
+      isAllowedAppNavigationUrl(
+        url,
+        rendererHtmlPath,
+        is.dev ? process.env["ELECTRON_RENDERER_URL"] : undefined,
+      )
+    )
+      return;
     event.preventDefault();
     openExternalUrl(url);
   });
-  mainWindow.webContents.on("will-attach-webview", (event, webPreferences, params) => {
-    const isWebPreview = params.partition === "web-preview";
-    if (!isAllowedWebviewUrl(params.src, isWebPreview)) {
-      event.preventDefault();
-      console.warn("[SECURITY] Blocked webview attachment for untrusted URL");
-      return;
-    }
-    hardenWebviewPreferences(webPreferences);
-  });
+  mainWindow.webContents.on(
+    "will-attach-webview",
+    (event, webPreferences, params) => {
+      const isWebPreview = params.partition === "web-preview";
+      if (!isAllowedWebviewUrl(params.src, isWebPreview)) {
+        event.preventDefault();
+        console.warn("[SECURITY] Blocked webview attachment for untrusted URL");
+        return;
+      }
+      hardenWebviewPreferences(webPreferences);
+    },
+  );
   mainWindow.webContents.on("context-menu", (_event, params) => {
     showChatContextMenu(mainWindow, params);
   });
