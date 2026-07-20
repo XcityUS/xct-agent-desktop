@@ -10,6 +10,7 @@ export default {
   done: "Done",
   edit: "Edit",
   addKey: "Add key",
+  activeModel: "Active Model",
   change: "Change",
   search: "Search",
   searchPlaceholder: "Search...",

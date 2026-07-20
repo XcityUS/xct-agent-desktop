@@ -695,7 +695,7 @@ function Providers({
           <div className="settings-section">
             <div className="settings-section-title settings-section-title-row">
               <span>
-                {t("common.model")}
+                {t("common.activeModel")}
                 {modelSaved && (
                   <span className="settings-saved" style={{ marginLeft: 8 }}>
                     {t("common.saved")}

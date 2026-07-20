@@ -8179,7 +8179,22 @@ body {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  /* Docs / Test / Configure stay out of the way — revealed on row hover or
+     keyboard focus, and collapsed (no reserved space) otherwise. */
+  margin-top: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height var(--transition),
+    opacity var(--transition),
+    margin-top var(--transition);
+}
+.gateway-platform-card:hover .gateway-platform-actions,
+.gateway-platform-card:focus-within .gateway-platform-actions {
+  margin-top: 10px;
+  max-height: 44px;
+  opacity: 1;
 }
 
 .gateway-platform-actions-left,

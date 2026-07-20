@@ -707,8 +707,7 @@ export const MESSAGING_PLATFORM_CATALOG: MessagingPlatformDefinition[] = [
   {
     id: "whatsapp",
     name: "WhatsApp",
-    description:
-      "Bundled bridge, QR sign-in",
+    description: "Bundled bridge, QR sign-in",
     docs_url: messagingDocs("whatsapp"),
     env_vars: [
       "WHATSAPP_ENABLED",
@@ -867,7 +866,7 @@ export const MESSAGING_PLATFORM_CATALOG: MessagingPlatformDefinition[] = [
   {
     id: "yuanbao",
     name: "Yuanbao",
-    description: "Connect Hermes to Tencent Yuanbao.",
+    description: "Tencent Yuanbao",
     docs_url: messagingDocs("yuanbao"),
     env_vars: [],
     required_env: [],
