@@ -13,10 +13,14 @@ This directory defines the high-level concepts, business logic, and architecture
 - [[sidebar-navigation]] — the recent-sessions list under the Chat nav item, capped at five with a "Show more" button that opens the full session list in a modal.
 - [[context-folder]] — the per-session linked working folder, persisted in a desktop-owned state.db table so a re-opened conversation restores its folder.
 - [[main-process]] — the Electron main-process entrypoint, app lifecycle modules, and centralized IPC registry.
+- [[remote-dashboard-oauth]] — direct Remote dashboard browser authentication, main-process cookie isolation, and single-use WebSocket ticket handling.
 - [[provider-setup]] — the first-run provider picker; its top grid mirrors the agent's native `CANONICAL_PROVIDERS` while OpenAI-compatible endpoints route through the Local presets.
 - [[hermes-account-login]] — desktop sign-in to a Hermes account via the RFC 8628 device grant; secure token storage, IPC, and the Providers-screen entry point.
+- [[agent-sync]] — bidirectional sync of desktop profiles with the signed-in account's cloud agents (persona, memory, color, model/provider) via the backend's `/api/agents`; hash-based per-part conflict handling, no deletion propagation.
 - [[kanban]] — the JIRA-style multi-agent board tab; a thin client over the `hermes kanban` CLI with canonical status columns, an archived toggle, and focus/poll refresh.
 - [[analytics]] — privacy-first, opt-out usage analytics that POST anonymous events to the in-house Hermes analytics service, keyed by a per-install localStorage UUID; replaces the former PostHog integration.
 - [[wallet-token-balances]] — profile-scoped Base mainnet wallets with encrypted recovery phrases, and on-chain ERC-20 token balance reads via ethers v6.
 - [[office-3d-traffic]] — the Office tab's backdrop traffic: car-following and junction-yielding simulation, per-model nose orientation, and instanced fleet rendering in a dozen draw calls.
 - [[office-3d-interiors]] — enterable office/bank/showroom interiors: per-location conditional mounting (city unmounts while indoors), camera fly-in rig, interactable objects (ATM → wallet, desk → agent, car → spec card), and idle-agent walking trips between buildings.
+- [[office-3d-walk-mode]] — GTA-style walk mode: glass roofs over the enterable buildings, the user's own third-person avatar (WASD + chase camera, shared crowd/collision), doorway-driven interior loading, and proximity Press-E interactions.
+- [[office-interactions]] — space representatives: interactive bank tellers whose menu runs account status, balances, and account creation against the hermes-one backend for a chosen agent; the extensible pattern for future spaces (showroom sales, building space).

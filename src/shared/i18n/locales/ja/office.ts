@@ -35,4 +35,35 @@ export default {
   showroomCardColor: "ボディカラー",
   showroomCardHint:
     "ショールームをご覧ください。エージェント用の車の購入機能は近日公開予定です。",
+  // Space representatives (bank teller interaction menu)
+  walkMode: "歩き回る",
+  walkModeExit: "ウォーク終了 (Esc)",
+  walkHint: "WASD / 矢印キーで移動 · Shiftで走る · Escで終了",
+  you: "あなた",
+  repBankTeller: "銀行の窓口係",
+  spaceBank: "銀行",
+  repPanelAgentLabel: "エージェント",
+  repPanelPickAgent: "エージェントを選択…",
+  repActionCheckBalance: "残高を確認",
+  repActionAccountStatus: "口座の状態を確認",
+  repActionCreateAccount: "口座を開設",
+  repActionSendMoney: "エージェントに送金",
+  repComingSoon: "近日公開",
+  repLoading: "処理中…",
+  repErrorGeneric: "問題が発生しました。もう一度お試しください。",
+  repStatusSignedOut:
+    "銀行を利用するには Hermes アカウントにサインインしてください。",
+  repStatusUnlinked:
+    "このエージェントはまだクラウドエージェントに連携されていません。サインインして再試行してください。",
+  repWalletsNone: "口座はまだありません。まず開設してください。",
+  repBadgeTransactable: "取引可能",
+  repBadgeReceiveOnly: "受取専用",
+  repBalanceNoTransactable:
+    "このエージェントには取引可能な口座がまだありません。まず開設してください。",
+  repBalanceEmpty: "トークン残高はまだありません。",
+  repBalanceTotal: "合計",
+  repCreateSuccess: "口座を開設しました",
+  repCreateExists: "このエージェントはすでに銀行口座を持っています。",
+  repStatusForeign:
+    "このエージェントは別の Hermes One アカウントに連携されています。",
 } as const;

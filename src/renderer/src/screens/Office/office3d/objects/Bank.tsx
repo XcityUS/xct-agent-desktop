@@ -9,6 +9,7 @@ import { WORLD_H } from "../core/constants";
 import { glbClone } from "../core/glb";
 import { CHARACTER_MODELS } from "../core/characters";
 import { Interactable } from "./Interactable";
+import { GlassRoof } from "./Roofs";
 import { StaffPerson } from "./StaffPerson";
 import {
   BANK_W,
@@ -346,16 +347,22 @@ export const ConnectingStreet = memo(
 export const BankSection = memo(function BankSection({
   position = [BANK_X, 0, BANK_Z],
   interactive = false,
+  roof = false,
   onAtmActivate,
 }: {
   position?: [number, number, number];
   /** Interior mode: ATMs become hover/click interactables. */
   interactive?: boolean;
+  /** Mount the glass roof (city view, or walk mode indoors). */
+  roof?: boolean;
   onAtmActivate?: () => void;
 } = {}): React.JSX.Element {
   return (
     <group position={position}>
       <BankShell />
+      {roof && (
+        <GlassRoof width={BANK_W} depth={BANK_D} height={BANK_WALL_H + 0.06} />
+      )}
       <BankCounterRow />
       <Suspense fallback={null}>
         <BankATMs interactive={interactive} onAtmActivate={onAtmActivate} />

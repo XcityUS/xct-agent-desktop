@@ -35,4 +35,33 @@ export default {
   showroomCardColor: "Kolor lakieru",
   showroomCardHint:
     "Rozejrzyj się po salonie — wkrótce kupisz samochody dla swoich agentów.",
+  // Space representatives (bank teller interaction menu)
+  walkMode: "Spaceruj",
+  walkModeExit: "Zakończ spacer (Esc)",
+  walkHint: "WASD / strzałki — ruch · Shift — bieg · Esc — wyjście",
+  you: "Ty",
+  repBankTeller: "Kasjer bankowy",
+  spaceBank: "Bank",
+  repPanelAgentLabel: "Agent",
+  repPanelPickAgent: "Wybierz agenta…",
+  repActionCheckBalance: "Sprawdź saldo",
+  repActionAccountStatus: "Sprawdź stan konta",
+  repActionCreateAccount: "Utwórz konto",
+  repActionSendMoney: "Wyślij pieniądze do agenta",
+  repComingSoon: "Wkrótce",
+  repLoading: "Przetwarzanie…",
+  repErrorGeneric: "Coś poszło nie tak. Spróbuj ponownie.",
+  repStatusSignedOut: "Zaloguj się na konto Hermes, aby korzystać z banku.",
+  repStatusUnlinked:
+    "Ten agent nie jest jeszcze połączony z agentem w chmurze. Zaloguj się i spróbuj ponownie.",
+  repWalletsNone: "Brak kont — utwórz jedno, aby zacząć.",
+  repBadgeTransactable: "Transakcyjne",
+  repBadgeReceiveOnly: "Tylko odbiór",
+  repBalanceNoTransactable:
+    "Ten agent nie ma jeszcze konta transakcyjnego — najpierw je utwórz.",
+  repBalanceEmpty: "Brak sald tokenów.",
+  repBalanceTotal: "Suma",
+  repCreateSuccess: "Konto utworzone",
+  repCreateExists: "Ten agent ma już konto bankowe.",
+  repStatusForeign: "Ten agent jest połączony z innym kontem Hermes One.",
 } as const;

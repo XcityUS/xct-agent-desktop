@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Crown,
   DoorOpen,
+  Footprints,
   LogOut,
   Move,
   RefreshCw,
@@ -15,10 +16,20 @@ import { useProfileModal } from "../../components/profile/ProfileModalContext";
 import oneChatIcon from "../../assets/images/one-chat.svg";
 import OneChatModal from "./OneChatModal";
 import Office3D from "./office3d/Office3D";
-import { profilesToOfficeAgents } from "./office3d/agents";
+import RepInteractionPanel from "./RepInteractionPanel";
+import { officeAgentsChanged, profilesToOfficeAgents } from "./office3d/agents";
+import { getRepresentative } from "./office3d/interactions/registry";
 import type { ShowroomCar } from "./office3d/objects/CarShowroom";
 import type { BuildingId, OfficeLocation } from "./office3d/core/locations";
-import type { OfficeAgent } from "./office3d/core/types";
+import type { AgentPlace, OfficeAgent } from "./office3d/core/types";
+import type { PlayerInteraction } from "./office3d/interactions/proximity";
+
+function isEditableTarget(t: EventTarget | null): boolean {
+  return (
+    t instanceof HTMLElement &&
+    (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)
+  );
+}
 
 interface OfficeProps {
   profile?: string;
@@ -56,6 +67,12 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     null,
   );
   const [carCard, setCarCard] = useState<ShowroomCar | null>(null);
+  // Space-representative menu (bank tellers today): which rep's panel is open.
+  const [activeRepId, setActiveRepId] = useState<string | null>(null);
+  // GTA-style walk mode: the user's avatar walks the city; interiors load by
+  // walking through doorways and interactions fire with E near their points.
+  const [walkMode, setWalkMode] = useState(false);
+  const [nearby, setNearby] = useState<PlayerInteraction | null>(null);
   const { openProfile } = useProfileModal();
   // Developer building-mover: click a building, then click ground to reposition
   // it; positions are logged to the console so the cityPlan constants can be
@@ -134,18 +151,7 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
       const profiles = await window.hermesAPI.listProfiles();
       const next = profilesToOfficeAgents(profiles);
       setAgents((prev) => {
-        const prevById = new Map(prev.map((a) => [a.id, a]));
-        const changed =
-          next.length !== prev.length ||
-          next.some((a) => {
-            const before = prevById.get(a.id);
-            return (
-              !before ||
-              before.status !== a.status ||
-              before.gatewayRunning !== a.gatewayRunning
-            );
-          });
-        return changed ? next : prev;
+        return officeAgentsChanged(prev, next) ? next : prev;
       });
     } catch {
       // Transient IPC failures are ignored; the next tick retries.
@@ -182,22 +188,58 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     setLocation(building);
     setFocusedBuilding(null);
     setCarCard(null);
+    setActiveRepId(null);
   }, []);
 
   const exitToCity = useCallback(() => {
     setLocation("city");
     setCarCard(null);
+    setActiveRepId(null);
   }, []);
 
-  // Escape backs out of an interior to the city view.
+  const enterWalkMode = useCallback(() => {
+    setWalkMode(true);
+    // The avatar spawns on the street outside HQ, so the world starts in
+    // city view regardless of which interior the orbit camera was in.
+    setLocation("city");
+    setFocusedBuilding(null);
+    setCarCard(null);
+    setActiveRepId(null);
+  }, []);
+
+  const exitWalkMode = useCallback(() => {
+    setWalkMode(false);
+    setNearby(null);
+    setLocation("city");
+    setCarCard(null);
+    setActiveRepId(null);
+  }, []);
+
+  // Walk mode is a foreground control scheme — leaving the tab exits it so
+  // its window-level key listeners never capture typing elsewhere.
   useEffect(() => {
-    if (!visible || location === "city") return;
+    if (!visible && walkMode) exitWalkMode();
+  }, [visible, walkMode, exitWalkMode]);
+
+  // The avatar crossed a doorway: mount that building's interior (or the
+  // city when back outside). Building-scoped overlays close on any move.
+  const handlePlayerPlace = useCallback((place: AgentPlace) => {
+    setLocation(place === "outside" ? "city" : place);
+    setCarCard(null);
+    setActiveRepId(null);
+  }, []);
+
+  // Escape exits walk mode, or backs out of an interior to the city view.
+  useEffect(() => {
+    if (!visible || (!walkMode && location === "city")) return;
     const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") exitToCity();
+      if (e.key !== "Escape") return;
+      if (walkMode) exitWalkMode();
+      else exitToCity();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [visible, location, exitToCity]);
+  }, [visible, location, walkMode, exitWalkMode, exitToCity]);
 
   // Bank ATM → the profile modal's wallet section (the selected agent's
   // wallet, falling back to the first profile).
@@ -211,11 +253,45 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     [],
   );
 
+  // Bank teller → the representative menu (account status, balances, new
+  // accounts) for a chosen agent.
+  const handleTellerActivate = useCallback(() => {
+    setActiveRepId("bank-teller");
+  }, []);
+
+  const closeRepPanel = useCallback(() => setActiveRepId(null), []);
+  const activeRep = getRepresentative(activeRepId);
+
   // Office desk → select its owner (opens the agent details sidebar).
   const handleDeskActivate = useCallback(
     (agentId: string) => setSelectedId(agentId),
     [],
   );
+
+  // Walk mode: E fires the nearby interaction point — the same actions the
+  // click-Interactables fire in orbit mode.
+  useEffect(() => {
+    if (!visible || !walkMode || !nearby) return;
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.code !== "KeyE" || isEditableTarget(e.target)) return;
+      if (e.metaKey || e.ctrlKey) return;
+      if (nearby.kind === "atm") handleAtmActivate();
+      else if (nearby.kind === "teller") handleTellerActivate();
+      else if (nearby.kind === "car")
+        handleCarActivate({ name: nearby.carName, tint: nearby.carTint });
+      else handleDeskActivate(nearby.agentId);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    visible,
+    walkMode,
+    nearby,
+    handleAtmActivate,
+    handleTellerActivate,
+    handleCarActivate,
+    handleDeskActivate,
+  ]);
 
   // Tag each agent with its org position; the CEO drives the executive desk.
   const positionedAgents = useMemo<OfficeAgent[]>(
@@ -351,13 +427,104 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
           location={location}
           onFocusBuilding={setFocusedBuilding}
           onAtmActivate={handleAtmActivate}
+          tellerLabel={t("office.repBankTeller")}
+          onTellerActivate={handleTellerActivate}
           onCarActivate={handleCarActivate}
           onDeskActivate={handleDeskActivate}
+          walkMode={walkMode}
+          playerLabel={t("office.you")}
+          onPlayerPlaceChange={handlePlayerPlace}
+          onNearbyInteraction={setNearby}
           devMode={devMode}
           onDevLog={setDevLog}
         />
 
-        {location === "city" && focusedBuilding && !devMode && (
+        {/* Walk-mode toggle: drop in as an avatar / return to the sky view. */}
+        {!devMode && (
+          <button
+            type="button"
+            onClick={walkMode ? exitWalkMode : enterWalkMode}
+            title={walkMode ? t("office.walkModeExit") : t("office.walkMode")}
+            style={{
+              position: "absolute",
+              bottom: 24,
+              left: 20,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 16px",
+              borderRadius: 12,
+              border: walkMode
+                ? "1px solid rgba(244,180,31,0.6)"
+                : "1px solid rgba(125,211,252,0.5)",
+              background: "rgba(20,24,33,0.94)",
+              color: walkMode ? "#f4b41f" : "#7dd3fc",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+              zIndex: 10,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            }}
+          >
+            <Footprints size={16} />
+            {walkMode ? t("office.walkModeExit") : t("office.walkMode")}
+          </button>
+        )}
+
+        {/* Walk-mode HUD: the nearby Press-E prompt, or the controls hint. */}
+        {walkMode && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 24,
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              padding: nearby ? "10px 16px" : "8px 14px",
+              borderRadius: 12,
+              background: "rgba(20,24,33,0.92)",
+              border: nearby
+                ? "1px solid rgba(244,180,31,0.55)"
+                : "1px solid rgba(255,255,255,0.12)",
+              color: nearby ? "#fff" : "rgba(255,255,255,0.65)",
+              fontSize: 13,
+              fontWeight: nearby ? 600 : 500,
+              zIndex: 10,
+              pointerEvents: "none",
+            }}
+          >
+            {nearby ? (
+              <>
+                <kbd
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: 22,
+                    height: 22,
+                    padding: "0 5px",
+                    borderRadius: 6,
+                    background: "rgba(244,180,31,0.18)",
+                    border: "1px solid rgba(244,180,31,0.6)",
+                    color: "#f4b41f",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fontFamily: "inherit",
+                  }}
+                >
+                  E
+                </kbd>
+                {nearby.label}
+              </>
+            ) : (
+              t("office.walkHint")
+            )}
+          </div>
+        )}
+
+        {location === "city" && focusedBuilding && !devMode && !walkMode && (
           <button
             type="button"
             onClick={() => enterBuilding(focusedBuilding)}
@@ -386,7 +553,7 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
           </button>
         )}
 
-        {location !== "city" && (
+        {location !== "city" && !walkMode && (
           <button
             type="button"
             onClick={exitToCity}
@@ -596,7 +763,16 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
           agents={positionedAgents}
         />
 
-        {selectedAgent && (
+        {activeRep && (
+          <RepInteractionPanel
+            rep={activeRep}
+            agents={positionedAgents}
+            initialAgentId={selectedId}
+            onClose={closeRepPanel}
+          />
+        )}
+
+        {selectedAgent && !activeRep && (
           <aside
             style={{
               position: "absolute",

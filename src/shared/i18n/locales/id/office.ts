@@ -35,4 +35,33 @@ export default {
   showroomCardColor: "Warna cat",
   showroomCardHint:
     "Lihat-lihat showroom — membeli mobil untuk agen Anda akan segera hadir.",
+  // Space representatives (bank teller interaction menu)
+  walkMode: "Berjalan-jalan",
+  walkModeExit: "Keluar mode jalan (Esc)",
+  walkHint: "WASD / panah untuk bergerak · Shift untuk lari · Esc untuk keluar",
+  you: "Anda",
+  repBankTeller: "Teller Bank",
+  spaceBank: "Bank",
+  repPanelAgentLabel: "Agen",
+  repPanelPickAgent: "Pilih agen…",
+  repActionCheckBalance: "Cek saldo",
+  repActionAccountStatus: "Cek status akun",
+  repActionCreateAccount: "Buat akun",
+  repActionSendMoney: "Kirim uang ke agen",
+  repComingSoon: "Segera hadir",
+  repLoading: "Memproses…",
+  repErrorGeneric: "Terjadi kesalahan. Silakan coba lagi.",
+  repStatusSignedOut: "Masuk ke akun Hermes Anda untuk menggunakan bank.",
+  repStatusUnlinked:
+    "Agen ini belum tertaut ke agen cloud. Masuk lalu coba lagi.",
+  repWalletsNone: "Belum ada akun — buat satu untuk memulai.",
+  repBadgeTransactable: "Dapat bertransaksi",
+  repBadgeReceiveOnly: "Hanya menerima",
+  repBalanceNoTransactable:
+    "Agen ini belum punya akun yang dapat bertransaksi — buat dulu.",
+  repBalanceEmpty: "Belum ada saldo token.",
+  repBalanceTotal: "Total",
+  repCreateSuccess: "Akun dibuat",
+  repCreateExists: "Agen ini sudah memiliki akun bank.",
+  repStatusForeign: "Agen ini tertaut ke akun Hermes One yang berbeda.",
 } as const;

@@ -34,4 +34,34 @@ export default {
   showroomCardColor: "Boya rengi",
   showroomCardHint:
     "Galeriye yakından bakın — ajanlarınız için araba satın alma yakında geliyor.",
+  // Space representatives (bank teller interaction menu)
+  walkMode: "Etrafta yürü",
+  walkModeExit: "Yürüyüşten çık (Esc)",
+  walkHint:
+    "Hareket için WASD / ok tuşları · Koşmak için Shift · Çıkmak için Esc",
+  you: "Sen",
+  repBankTeller: "Banka Veznedarı",
+  spaceBank: "Banka",
+  repPanelAgentLabel: "Ajan",
+  repPanelPickAgent: "Bir ajan seçin…",
+  repActionCheckBalance: "Bakiye sorgula",
+  repActionAccountStatus: "Hesap durumunu sorgula",
+  repActionCreateAccount: "Hesap oluştur",
+  repActionSendMoney: "Bir ajana para gönder",
+  repComingSoon: "Yakında",
+  repLoading: "İşleniyor…",
+  repErrorGeneric: "Bir şeyler ters gitti. Tekrar deneyin.",
+  repStatusSignedOut: "Bankayı kullanmak için Hermes hesabınıza giriş yapın.",
+  repStatusUnlinked:
+    "Bu ajan henüz bir bulut ajanına bağlı değil. Giriş yapıp tekrar deneyin.",
+  repWalletsNone: "Henüz hesap yok — başlamak için bir tane oluşturun.",
+  repBadgeTransactable: "İşlem yapılabilir",
+  repBadgeReceiveOnly: "Yalnızca alım",
+  repBalanceNoTransactable:
+    "Bu ajanın henüz işlem yapılabilir bir hesabı yok — önce bir tane oluşturun.",
+  repBalanceEmpty: "Henüz token bakiyesi yok.",
+  repBalanceTotal: "Toplam",
+  repCreateSuccess: "Hesap oluşturuldu",
+  repCreateExists: "Bu ajanın zaten bir banka hesabı var.",
+  repStatusForeign: "Bu ajan farklı bir Hermes One hesabına bağlı.",
 } as const;
