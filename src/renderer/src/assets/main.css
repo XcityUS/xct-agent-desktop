@@ -1243,8 +1243,8 @@ body {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: none;
   border-radius: var(--radius-md);
 }
 
@@ -3707,6 +3707,38 @@ body {
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   pointer-events: none;
+}
+
+.chat-fast-popover-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.chat-fast-popover-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  /* Off state: a quiet neutral chip so the bolt reads clearly. */
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+/* Block removes the inline-SVG baseline gap that otherwise makes the bolt sit
+   low; the lucide Zap glyph is centred in its own viewBox. */
+.chat-fast-popover-icon svg {
+  display: block;
+}
+/* On state: a solid amber badge with a dark glyph — high contrast, and it
+   signals "active" the way the toggle button does. */
+.chat-fast-active-popover .chat-fast-popover-icon {
+  color: #3a2900;
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #f59e0b 20%, transparent);
 }
 
 .chat-fast-popover strong {
@@ -6564,9 +6596,10 @@ body {
 }
 
 .settings-section {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  /* Light-based: a lifted translucent panel instead of a bordered box. */
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border: none;
+  border-radius: var(--radius-lg);
   padding: 20px;
   margin-bottom: 16px;
 }
@@ -6578,6 +6611,112 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.8px;
   margin-bottom: 16px;
+}
+
+/* Compact API-key list: one row per tool (name + description on the left; a
+   masked key + reveal, or an "Add key" action, on the right) instead of a
+   full input field each. */
+.settings-key-list {
+  display: flex;
+  flex-direction: column;
+}
+.settings-key-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 40px;
+  padding: 8px 4px;
+}
+.settings-key-row + .settings-key-row {
+  border-top: 1px solid var(--border);
+}
+.settings-key-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.settings-key-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.settings-key-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-key-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.settings-key-masked {
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.settings-key-masked:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+.settings-key-eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+.settings-key-eye:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+.settings-key-add {
+  border: none;
+  background: none;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-text, var(--accent));
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.settings-key-add:hover {
+  background: color-mix(in srgb, var(--accent, #4c8dff) 14%, transparent);
+}
+.settings-key-input {
+  width: min(280px, 42vw);
+}
+
+/* Secondary buttons inside sections go light-based — a lifted fill, no stroke. */
+.settings-section .btn-secondary {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+.settings-section .btn-secondary:hover:not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--text-primary) 13%, transparent);
 }
 
 .settings-field {
@@ -6762,8 +6901,8 @@ body {
 }
 
 .provider-key-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: none;
   border-radius: var(--radius-md);
   padding: 14px;
   display: flex;
@@ -6803,18 +6942,15 @@ body {
   align-items: center;
   gap: 10px;
   text-align: left;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: none;
   border-radius: var(--radius-md);
   padding: 12px 14px;
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
+  transition: background 0.15s ease;
 }
 .provider-config-card:hover {
-  background: var(--bg-hover, var(--bg-secondary));
-  border-color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
 }
 .provider-config-card-body {
   display: flex;
@@ -6844,21 +6980,21 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px dashed var(--border);
+  border: none;
   border-radius: var(--radius-md);
   padding: 12px 14px;
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  background: transparent;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
   transition:
-    border-color 0.15s ease,
+    background 0.15s ease,
     color 0.15s ease;
 }
 .provider-add-card:hover {
-  border-color: var(--text-primary);
   color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 /* Add-provider picker modal */
@@ -7244,6 +7380,33 @@ body {
   gap: 8px;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* Status as two icon chips: Connected (green) + Sync on (neutral). */
+.hermes-account-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.hermes-account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+.hermes-account-chip svg {
+  flex-shrink: 0;
+}
+.hermes-account-chip.is-connected {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
 }
 
 /* Sign-in modal — device-login (RFC 8628) with a loader spinning around the
@@ -7771,6 +7934,17 @@ body {
   gap: 7px;
 }
 
+/* Secondary buttons across the Gateway page go light-based — lifted fill, no
+   stroke (Stop, Restart, Generate, modal Cancel). */
+.gateway-management .btn-secondary {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+.gateway-management .btn-secondary:hover:not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--text-primary) 13%, transparent);
+}
+
 .gateway-overview {
   display: flex;
   align-items: flex-start;
@@ -7808,15 +7982,18 @@ body {
   gap: 10px;
   min-height: 42px;
   padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-primary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
   color: var(--text-muted);
+  transition:
+    box-shadow var(--transition),
+    border-color var(--transition);
 }
 
 .gateway-search:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(0, 136, 255, 0.18);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .gateway-search input {
@@ -7853,9 +8030,13 @@ body {
 }
 
 .gateway-platform-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 12px;
+  /* One grouped lifted panel; platforms are rows split by hairlines instead of
+     separate bordered cards. */
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .gateway-platform-section {
@@ -7865,25 +8046,24 @@ body {
 }
 
 .gateway-platform-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 14px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 12px 16px;
   margin-bottom: 0;
-  transition:
-    border-color var(--transition),
-    background var(--transition),
-    box-shadow var(--transition);
+  transition: background var(--transition);
+}
+
+.gateway-platform-card + .gateway-platform-card {
+  border-top: 1px solid var(--border);
 }
 
 .gateway-platform-card:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--border-bright);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
 }
 
 .gateway-platform-card:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-subtle);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
 .gateway-platform-header {
@@ -8334,8 +8514,8 @@ body {
   justify-content: center;
   min-height: 140px;
   color: var(--text-muted);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
 }
 
 @media (max-width: 760px) {

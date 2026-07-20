@@ -9,6 +9,7 @@ export default {
   save: "Save",
   done: "Done",
   edit: "Edit",
+  addKey: "Add key",
   change: "Change",
   search: "Search",
   searchPlaceholder: "Search...",
