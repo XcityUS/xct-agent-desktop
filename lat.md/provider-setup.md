@@ -92,6 +92,8 @@ Named OpenAI-compatible providers sync both ways between the desktop and the age
 
 The agent reads two user-config shapes (`hermes-agent/hermes_cli/providers.py`): the `providers:` dict (`{slug: {name, base_url, key_env, transport}}`, resolved by `resolve_user_provider`) and the legacy `custom_providers:` list. [[src/main/agent-config-providers.ts]] is the bridge: it parses and text-edits those blocks with offset/line splicing (like `config.ts`), so user comments and unrelated keys survive round-trips.
 
+The agent's config scaffold writes an inline empty dict (`providers: {}`), which the line-based block parser can't index — the upsert rewrites that line into block form instead of appending (a second `providers:` key would make the YAML ambiguous; this miss silently disabled the Hermes One mirror on real configs). Any other unparseable flow-dict form is left untouched rather than risking a duplicate key.
+
 Sync is read-repair plus write-mirroring, all in the main process — the renderer needed no changes:
 
 - **Import (terminal → desktop)**: every [[src/main/providers-store.ts#listCustomProviders]] read first runs the import — each config.yaml `providers:` entry is upserted into `providers.json` (skipping hosts that own a dedicated brand card), and a terminal `key_env`'s value is aliased additively to the derived `CUSTOM_PROVIDER_<NAME>_KEY` so the desktop key field and the runtime's label-derived lookup resolve unchanged. Similarly [[src/main/models.ts#syncAgentConfigModels]] merges `custom_providers:` model entries into `models.json` on every [[src/main/models.ts#listModels]] call (not just first seed), deduped by provider + model id + base URL, tagging rows with `providerLabel` so cards group correctly.
@@ -126,6 +128,12 @@ Removing a provider in the desktop also deletes its `providers:` entry, so it st
 ### Legacy custom_providers removal
 
 `removeAgentCustomProviderEntry` drops a `custom_providers:` list item by display name while leaving sibling items and following top-level blocks intact.
+
+### First-party brands mirror as user providers
+
+A keyed Hermes One is mirrored into config.yaml as `providers: hermesone:` ([[src/main/agent-config-providers.ts#mirrorFirstPartyAgentProviders]], run on every model-library / provider-list read) — without creating a custom card, since the brand owns a dedicated key card.
+
+This exists because desktop models on `inference.hermesone.org` are saved as bare `custom` + base URL, and the agent resolves `/model … --provider custom` against the **session's current** base URL — a session sitting on another provider (e.g. Nous) would send the Hermes One model to the wrong endpoint (the hermesone-swift → Nous-proxy 404). The named entry gives the switch a slug that always carries the right URL and `HERMESONE_API_KEY`; the dashboard transport's [[src/renderer/src/screens/Chat/hooks/useDashboardChatTransport.ts#resolveDashboardProviderForModel]] correspondingly matches **any** gateway provider row by base URL (named user providers included, not just `custom:*` rows) before ever falling back to bare `custom`.
 
 ## Models live under each provider (OpenCode-style)
 

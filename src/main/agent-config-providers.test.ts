@@ -117,6 +117,56 @@ describe("agent-config providers (config.yaml bridge)", () => {
     ]);
   });
 
+  // The agent's config scaffold writes `providers: {}` (inline empty dict).
+  // The upsert must rewrite that line into block form — this exact miss made
+  // the Hermes One mirror a silent no-op on real configs (appending would
+  // have produced a duplicate `providers:` key instead).
+  it("rewrites an inline empty providers dict into block form", async () => {
+    writeConfig(
+      [
+        "model:",
+        "  provider: nous",
+        "providers: {}",
+        "fallback_providers: []",
+        "",
+      ].join("\n"),
+    );
+    const m = await mod();
+    m.upsertAgentUserProvider("default", {
+      name: "Hermes One",
+      slug: "hermesone",
+      baseUrl: "https://inference.hermesone.org/v1",
+      keyEnv: "HERMESONE_API_KEY",
+    });
+    const content = readConfig();
+    // Exactly one providers key, now in block form, siblings untouched.
+    expect(content.match(/^providers[^\S\r\n]*:/gm)).toHaveLength(1);
+    expect(content).toContain("fallback_providers: []");
+    expect(m.listAgentUserProviders("default")).toEqual([
+      {
+        slug: "hermesone",
+        name: "Hermes One",
+        baseUrl: "https://inference.hermesone.org/v1",
+        keyEnv: "HERMESONE_API_KEY",
+      },
+    ]);
+  });
+
+  it("never appends a duplicate key over an unparseable flow dict", async () => {
+    const before = [
+      'providers: { keep: { base_url: "https://keep.example/v1" } }',
+      "",
+    ].join("\n");
+    writeConfig(before);
+    const m = await mod();
+    m.upsertAgentUserProvider("default", {
+      name: "Hermes One",
+      baseUrl: "https://inference.hermesone.org/v1",
+      keyEnv: "HERMESONE_API_KEY",
+    });
+    expect(readConfig()).toBe(before);
+  });
+
   it("creates config.yaml when missing", async () => {
     const m = await mod();
     m.upsertAgentUserProvider("default", {

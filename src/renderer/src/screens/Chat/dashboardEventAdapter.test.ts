@@ -48,6 +48,38 @@ describe("mergeStreamedWithFinal", () => {
     expect(merged).not.toContain("checkIt");
   });
 
+  // Lossy re-assembly: the content stream dropped chunks (e.g. alternate
+  // chunks mis-tagged as `reasoning` upstream), so the streamed bubble is a
+  // garbled subsequence of the final answer. The final must REPLACE it —
+  // concatenating stacked the partial above the clean answer in one bubble.
+  it("replaces a lossy chunk-dropped stream with the final text", () => {
+    expect(
+      mergeStreamedWithFinal(
+        "! What are we working on?",
+        "Hey! What are we working on today?",
+      ),
+    ).toBe("Hey! What are we working on today?");
+  });
+
+  it("replaces a longer garbled stream that interleaves into the final", () => {
+    expect(
+      mergeStreamedWithFinal(
+        "Sat planet from the Sun — ring system made ice and rock particles.",
+        "Saturn is the sixth planet from the Sun — a gas giant famous for its stunning ring system made of ice and rock particles.",
+      ),
+    ).toBe(
+      "Saturn is the sixth planet from the Sun — a gas giant famous for its stunning ring system made of ice and rock particles.",
+    );
+  });
+
+  it("still concatenates a short lead-in even if it is a subsequence", () => {
+    // Guard: a tiny streamed fragment is a subsequence of almost anything;
+    // treat it as the pre-tool-call text it usually is.
+    expect(mergeStreamedWithFinal("On it.", "Onwards — it is done.")).toBe(
+      "On it.\n\nOnwards — it is done.",
+    );
+  });
+
   it("stitches a re-streamed boundary, dropping the duplicated seam", () => {
     // Tail of streamed repeats the head of final at a word boundary.
     expect(mergeStreamedWithFinal("The answer is 4", "answer is 4.")).toBe(

@@ -204,6 +204,26 @@ export function upsertAgentUserProvider(
   const entry = { slug, name, baseUrl, keyEnv: input.keyEnv || "" };
 
   if (!block) {
+    // The agent's config scaffold writes an inline empty dict (`providers: {}`),
+    // which the block parser can't index. Rewrite that line into block form —
+    // appending a second `providers:` key instead would make the YAML
+    // ambiguous (this exact miss silently disabled the Hermes One mirror).
+    const emptyFlow = content.match(
+      /^providers[^\S\r\n]*:[^\S\r\n]*\{[^\S\r\n]*\}[^\S\r\n]*(#.*)?\r?\n?/m,
+    );
+    if (emptyFlow && emptyFlow.index !== undefined) {
+      const replacement = `providers:\n${renderEntry("  ", entry)}`;
+      safeWriteFile(
+        file,
+        content.slice(0, emptyFlow.index) +
+          replacement +
+          content.slice(emptyFlow.index + emptyFlow[0].length),
+      );
+      return;
+    }
+    // Any other unparseable `providers:` form (a non-empty flow dict) — bail
+    // rather than append a duplicate top-level key.
+    if (/^providers[^\S\r\n]*:/m.test(content)) return;
     const sep = content === "" || content.endsWith("\n") ? "" : "\n";
     safeWriteFile(
       file,
@@ -287,6 +307,42 @@ export function removeAgentUserProvider(
     file,
     content.slice(0, existing.start) + content.slice(existing.end),
   );
+}
+
+// Hermes One's inference endpoint. Mirrored as a first-party user provider so
+// the agent can route it by slug; must match `OPENAI_COMPATIBLE_BASE_URLS`
+// (renderer constants) and the `URL_KEY_MAP` host pattern.
+const HERMESONE_BASE_URL = "https://inference.hermesone.org/v1";
+
+/**
+ * Mirror first-party keyed brands into config.yaml `providers:` so the agent
+ * can route them as *named* providers. Today: Hermes One.
+ *
+ * Without this the gateway has no provider row for `inference.hermesone.org`
+ * — desktop models on that endpoint are saved as bare `custom` + base URL,
+ * and the agent resolves `--provider custom` against **the session's current
+ * base URL**. A session sitting on another provider (e.g. Nous) then sends
+ * the Hermes One model to the wrong endpoint (404, wrong catalog). A
+ * `providers: hermesone:` entry gives the switch a slug that always carries
+ * the right URL and key. Idempotent — the upsert no-ops when unchanged; runs
+ * on every model-library / provider-list read.
+ */
+export function mirrorFirstPartyAgentProviders(profile?: string): void {
+  try {
+    const { envFile } = profilePaths(profile);
+    if (!existsSync(envFile)) return;
+    const env = readFileSync(envFile, "utf-8");
+    const match = env.match(/^\s*HERMESONE_API_KEY\s*=\s*(.+)\s*$/m);
+    if (!match || !match[1].trim()) return;
+    upsertAgentUserProvider(profile, {
+      slug: "hermesone",
+      name: "Hermes One",
+      baseUrl: HERMESONE_BASE_URL,
+      keyEnv: "HERMESONE_API_KEY",
+    });
+  } catch {
+    /* best-effort — chat still works once the entry can be written */
+  }
 }
 
 /**

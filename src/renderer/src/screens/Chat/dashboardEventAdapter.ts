@@ -446,6 +446,15 @@ function tailHeadOverlap(a: string, b: string): number {
  * Comparison is whitespace-insensitive; every branch returns trimmed text so
  * the result doesn't depend on which branch ran.
  */
+/** `needle` appears in `hay` in order (not necessarily contiguously). */
+function isNormalizedSubsequence(needle: string, hay: string): boolean {
+  let i = 0;
+  for (let j = 0; j < hay.length && i < needle.length; j++) {
+    if (needle[i] === hay[j]) i++;
+  }
+  return i === needle.length;
+}
+
 export function mergeStreamedWithFinal(
   streamed: string,
   final: string,
@@ -459,6 +468,22 @@ export function mergeStreamedWithFinal(
   const normFinal = normalizeText(finalContent);
   if (normFinal.includes(normStreamed)) return finalContent;
   if (normStreamed.includes(normFinal)) return streamedContent;
+
+  // Lossy re-assembly: the streamed deltas dropped chunks (e.g. the upstream
+  // tagged alternate chunks as `reasoning`, so the content stream only carried
+  // a subset), leaving the streamed bubble a *subsequence* of the final text
+  // ("! What are we working on?" for "Hey! What are we working on today?").
+  // Concatenating would stack the garbled partial above the clean answer —
+  // the final text replaces it. Guarded to substantial coverage so the
+  // pre-tool-call + answer pair (#746, genuinely different texts) still
+  // stacks: a short unrelated lead-in is a subsequence of almost anything.
+  if (
+    normStreamed.length >= 12 &&
+    normStreamed.length >= 0.3 * normFinal.length &&
+    isNormalizedSubsequence(normStreamed, normFinal)
+  ) {
+    return finalContent;
+  }
 
   const overlap = tailHeadOverlap(streamedContent, finalContent);
   if (overlap > 0) return `${streamedContent}${finalContent.slice(overlap)}`;

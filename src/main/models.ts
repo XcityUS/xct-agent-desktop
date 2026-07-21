@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { HERMES_HOME } from "./installer";
 import { safeWriteFile, profilePaths } from "./utils";
 import { hostDerivedEnvKeyForUrl } from "./host-derived-env";
+import { mirrorFirstPartyAgentProviders } from "./agent-config-providers";
 import { customProviderEnvKey } from "../shared/url-key-map";
 import DEFAULT_MODELS from "./default-models";
 
@@ -370,6 +371,11 @@ function writeCustomProviderEnvKeys(
  * absent.
  */
 export function syncAgentConfigModels(profile?: string): void {
+  // Piggyback on the library read (chat pickers hit this via list-models):
+  // keyed first-party brands must exist as named `providers:` entries so
+  // session model switches route them by slug instead of bare `custom`.
+  mirrorFirstPartyAgentProviders(profile);
+
   let cpModels: CustomProviderEntry[];
   try {
     cpModels = loadCustomProviders(profile);

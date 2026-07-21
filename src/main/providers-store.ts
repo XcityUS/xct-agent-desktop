@@ -13,6 +13,7 @@ import {
 } from "../shared/url-key-map";
 import {
   listAgentUserProviders,
+  mirrorFirstPartyAgentProviders,
   removeAgentCustomProviderEntry,
   removeAgentUserProvider,
   upsertAgentUserProvider,
@@ -164,6 +165,9 @@ function upsertCustomProviderRecordOnly(
  *  so the returned list covers both origins. */
 export function listCustomProviders(profile?: string): CustomProviderRecord[] {
   const normalized = normalizeProfile(profile);
+  // Keyed first-party brands (Hermes One) must exist as named `providers:`
+  // entries so gateway model switches can route them by slug.
+  mirrorFirstPartyAgentProviders(normalized);
   importAgentConfigProviders(normalized);
   return readProvidersFile(normalized).providers;
 }

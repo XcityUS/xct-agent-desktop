@@ -182,6 +182,31 @@ describe("providers store", () => {
     expect(config).not.toContain("faab-ai");
   });
 
+  // @lat: [[provider-setup#Provider setup#Agent config sync for named providers#First-party brands mirror as user providers]]
+  it("mirrors a keyed Hermes One into config.yaml providers: without a custom card", async () => {
+    const { writeFileSync } = await import("fs");
+    writeFileSync(
+      join(mockState.hermesHome, ".env"),
+      "HERMESONE_API_KEY=hs-live-abc\n",
+    );
+    const s = await store();
+    // No custom-provider card — Hermes One owns a dedicated brand card.
+    expect(s.listCustomProviders("default")).toEqual([]);
+    const config = readFileSync(
+      join(mockState.hermesHome, "config.yaml"),
+      "utf-8",
+    );
+    expect(config).toContain("hermesone:");
+    expect(config).toContain('base_url: "https://inference.hermesone.org/v1"');
+    expect(config).toContain('key_env: "HERMESONE_API_KEY"');
+  });
+
+  it("does not create a providers: entry without a Hermes One key", async () => {
+    const s = await store();
+    s.listCustomProviders("default");
+    expect(existsSync(join(mockState.hermesHome, "config.yaml"))).toBe(false);
+  });
+
   it("isolates providers per profile", async () => {
     const s = await store();
     s.upsertCustomProvider("default", {
