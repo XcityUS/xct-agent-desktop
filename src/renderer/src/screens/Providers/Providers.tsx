@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
+  Coins,
 } from "lucide-react";
 import { customProviderEnvKey } from "../../../../shared/url-key-map";
 import type { HermesAccount } from "../../../../shared/account";
@@ -100,12 +101,17 @@ function LogoSelect<T extends { key: string }>({
         {active && (
           <BrandLogo provider={brandOf(active)} size={18} matchTheme={true} />
         )}
-        <span className="logo-select-value">{active ? labelOf(active) : ""}</span>
+        <span className="logo-select-value">
+          {active ? labelOf(active) : ""}
+        </span>
         <ChevronDown size={16} className="logo-select-chevron" aria-hidden />
       </button>
       {open && (
         <>
-          <div className="logo-select-backdrop" onClick={() => setOpen(false)} />
+          <div
+            className="logo-select-backdrop"
+            onClick={() => setOpen(false)}
+          />
           <div className="logo-select-menu">
             {options.map((o) => (
               <button
@@ -200,6 +206,8 @@ function Providers({
   // Hermes account (device login). `account` is the signed-in profile or null.
   const [account, setAccount] = useState<HermesAccount | null>(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  // AI-credit balance for the account card (null = signed out / unavailable).
+  const [credits, setCredits] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
     void window.hermesAPI.getAccount(profile).then((a) => {
@@ -209,6 +217,37 @@ function Providers({
       cancelled = true;
     };
   }, [profile]);
+
+  // Hermes One convenience layer: with a signed-in account, surface the
+  // credit balance and make sure the profile has an auto-provisioned
+  // HERMESONE_API_KEY (no-op when one exists; the main process guards
+  // remote/SSH modes). A freshly created key means the env just changed
+  // under us — re-read it so the Hermes One card + picker appear now, not
+  // on the next visit.
+  useEffect(() => {
+    let cancelled = false;
+    if (!account) {
+      setCredits(null);
+      return;
+    }
+    void window.hermesAPI
+      .getHermesOneCredits()
+      .then((r) => {
+        if (!cancelled) setCredits(r.balance);
+      })
+      .catch(() => {});
+    void window.hermesAPI
+      .ensureHermesOneKey(profile)
+      .then(async (r) => {
+        if (r.status !== "created" || cancelled) return;
+        const envData = await window.hermesAPI.getEnv(profile);
+        if (!cancelled) setEnv(envData);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [account, profile]);
 
   // Per-key debounce timers for env auto-save on change. Previously env
   // values were persisted only on input blur, so users who clicked the
@@ -514,7 +553,10 @@ function Providers({
         brand: "custom",
         label,
         provider: "custom",
-        baseUrl: models[0]?.baseUrl || storedBaseUrl,
+        // Prefer the authoritative providers.json base URL so an edited endpoint
+        // routes newly picked models correctly; fall back to a saved model's URL
+        // only for orphan records whose stored base URL is blank.
+        baseUrl: storedBaseUrl || models[0]?.baseUrl || "",
         keyEnv,
         providerLabel: label,
         models,
@@ -531,7 +573,9 @@ function Providers({
   const pickDiscovery = useDiscoveredModels({
     provider: activeProvider?.provider ?? "auto",
     baseUrl: activeProvider?.baseUrl || undefined,
-    apiKey: activeProvider ? env[activeProvider.keyEnv] || undefined : undefined,
+    apiKey: activeProvider
+      ? env[activeProvider.keyEnv] || undefined
+      : undefined,
     profile,
     enabled: modelPickerOpen && !!activeProvider,
   });
@@ -553,12 +597,11 @@ function Providers({
           m.model === modelName &&
           displayProviderFromConfig(m.provider, m.baseUrl) === modelProvider,
       );
-      const curKey =
-        cur?.providerLabel
-          ? `label:${cur.providerLabel}`
-          : cur
-            ? `brand:${displayProviderFromConfig(cur.provider, cur.baseUrl)}`
-            : "";
+      const curKey = cur?.providerLabel
+        ? `label:${cur.providerLabel}`
+        : cur
+          ? `brand:${displayProviderFromConfig(cur.provider, cur.baseUrl)}`
+          : "";
       if (pickerProviders.some((p) => p.key === curKey)) return curKey;
       return pickerProviders[0]?.key ?? "";
     });
@@ -615,9 +658,7 @@ function Providers({
     // Re-picking a model must not drop it to "" — the save-side canonical
     // fill would silently flip a mainland user to the intl endpoint (#825).
     const keepDashScopeUrl =
-      nextProvider === "alibaba" &&
-      modelProvider === "alibaba" &&
-      modelBaseUrl;
+      nextProvider === "alibaba" && modelProvider === "alibaba" && modelBaseUrl;
     setModelProvider(nextProvider);
     setModelName(saved.model);
     setModelBaseUrl(
@@ -657,16 +698,53 @@ function Providers({
               </p>
             )}
             {account ? (
-              <div className="hermes-account-summary">
-                <span className="hermes-account-identity">
-                  <User size={16} />
-                  <span>
-                    {t("providers.hermesAccount.signedInAs")}{" "}
-                    <strong>
-                      {account.user.email ||
-                        account.user.name ||
-                        account.user.id}
-                    </strong>
+              <div className="hermes-account-card">
+                {account.user.avatarUrl ? (
+                  <img
+                    className="hermes-account-avatar"
+                    src={account.user.avatarUrl}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span
+                    className="hermes-account-avatar hermes-account-avatar-letter"
+                    aria-hidden="true"
+                  >
+                    {(account.user.name || account.user.email || "?")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+                )}
+                <span className="hermes-account-who">
+                  <span className="hermes-account-name">
+                    {account.user.name || account.user.email || account.user.id}
+                  </span>
+                  {account.user.name && account.user.email && (
+                    <span className="hermes-account-email">
+                      {account.user.email}
+                    </span>
+                  )}
+                  <span className="hermes-account-chips">
+                    <span className="hermes-account-chip is-connected">
+                      <span className="hermes-account-dot" aria-hidden="true" />
+                      {t("providers.hermesAccount.connected")}
+                    </span>
+                    <span className="hermes-account-chip">
+                      <RefreshCw size={11} aria-hidden="true" />
+                      {t("providers.hermesAccount.syncOn")}
+                    </span>
+                    {credits !== null && (
+                      <span
+                        className="hermes-account-chip"
+                        title={t("providers.hermesAccount.creditsTitle")}
+                      >
+                        <Coins size={11} aria-hidden="true" />
+                        {t("providers.hermesAccount.credits", {
+                          amount: credits.toFixed(2),
+                        })}
+                      </span>
+                    )}
                   </span>
                 </span>
                 <button
@@ -746,7 +824,6 @@ function Providers({
               </p>
             )}
           </div>
-
 
           {/* Provider configuration (keys + models). Placed above the
               credential pool: it's the primary, user-friendly surface for
@@ -1036,10 +1113,16 @@ function Providers({
           {/* Active-model picker: choose a configured provider → one of its
               configured models. The key is resolved automatically at runtime. */}
           {modelPickerOpen && (
-            <div className="models-modal-overlay" onClick={() => setModelPickerOpen(false)}>
-              <div className="models-modal provider-modal" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="models-modal-overlay"
+              onClick={() => setModelPickerOpen(false)}
+            >
+              <div
+                className="models-modal model-select-modal"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="models-modal-header">
-                  <h2 className="models-modal-title provider-modal-title">
+                  <h2 className="models-modal-title model-select-title">
                     {t("providers.model.pickerTitle")}
                   </h2>
                   <button

@@ -9,7 +9,7 @@ import {
   Check,
   Ban,
   RotateCcw,
-  Sparkles,
+  Wand,
 } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
 
@@ -949,7 +949,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
                             }}
                             disabled={actionBusy === task.id}
                           >
-                            <Sparkles size={14} />
+                            <Wand size={14} />
                           </button>
                         )}
                         {!isHqActive && task.status === "ready" && (

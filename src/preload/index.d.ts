@@ -12,8 +12,10 @@ import type { TokenBalancesResponse } from "../shared/tokens";
 import type { CustomProviderRecord } from "../shared/custom-providers";
 import type {
   DeviceCodeInfo,
+  EnsureHermesOneKeyResult,
   HermesAccount,
   HermesAccountUser,
+  HermesOneCreditsResult,
 } from "../shared/account";
 import type {
   RegistryKind,
@@ -268,6 +270,8 @@ interface HermesAPI {
   onAccountLoginProgress: (callback: (chunk: string) => void) => () => void;
   getAccount: (profile?: string) => Promise<HermesAccount | null>;
   accountLogout: (profile?: string) => Promise<{ success: boolean }>;
+  ensureHermesOneKey: (profile?: string) => Promise<EnsureHermesOneKeyResult>;
+  getHermesOneCredits: () => Promise<HermesOneCreditsResult>;
 
   getLocale: () => Promise<AppLocale>;
   setLocale: (locale: AppLocale) => Promise<AppLocale>;
