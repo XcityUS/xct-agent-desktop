@@ -50,8 +50,14 @@ function readConfig(profile?: string): { file: string; content: string } {
 }
 
 function stripScalar(raw: string): string {
-  return raw
-    .trim()
+  const trimmed = raw.trim();
+  // A double-quoted scalar: unquote and unescape (the inverse of yamlQuote),
+  // and don't apply comment stripping inside the quotes.
+  const dq = trimmed.match(/^"((?:[^"\\]|\\.)*)"/);
+  if (dq) return dq[1].replace(/\\(["\\])/g, "$1");
+  const sq = trimmed.match(/^'((?:[^']|'')*)'/);
+  if (sq) return sq[1].replace(/''/g, "'");
+  return trimmed
     .replace(/\s+#.*$/, "")
     .replace(/^["']|["']$/g, "")
     .trim();
@@ -171,6 +177,12 @@ export function listAgentUserProviders(profile?: string): AgentUserProvider[] {
   }));
 }
 
+/** Double-quoted YAML scalar: backslashes and quotes escaped so a provider
+ *  name like `My "Fast" Provider` can't produce an unparseable config.yaml. */
+function yamlQuote(value: string): string {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
 function renderEntry(
   indent: string,
   input: { slug: string; name: string; baseUrl: string; keyEnv: string },
@@ -178,9 +190,9 @@ function renderEntry(
   const sub = indent + "  ";
   return (
     `${indent}${input.slug}:\n` +
-    `${sub}name: "${input.name}"\n` +
-    `${sub}base_url: "${input.baseUrl}"\n` +
-    (input.keyEnv ? `${sub}key_env: "${input.keyEnv}"\n` : "")
+    `${sub}name: ${yamlQuote(input.name)}\n` +
+    `${sub}base_url: ${yamlQuote(input.baseUrl)}\n` +
+    (input.keyEnv ? `${sub}key_env: ${yamlQuote(input.keyEnv)}\n` : "")
   );
 }
 
@@ -268,13 +280,13 @@ export function upsertAgentUserProvider(
       patches.push({
         start: span.valueStart,
         end: span.valueEnd,
-        text: `"${value}"`,
+        text: yamlQuote(value),
       });
     } else {
       patches.push({
         start: existing.headerEnd,
         end: existing.headerEnd,
-        text: `${fieldIndent}${key}: "${value}"\n`,
+        text: `${fieldIndent}${key}: ${yamlQuote(value)}\n`,
       });
     }
   }

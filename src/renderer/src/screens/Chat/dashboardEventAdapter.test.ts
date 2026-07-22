@@ -80,6 +80,16 @@ describe("mergeStreamedWithFinal", () => {
     );
   });
 
+  it("preserves pre-tool-call text that embeds only as scattered characters", () => {
+    // Review regression: the streamed text is a plain character subsequence
+    // of the final (every char appears in order as 1-char fragments), long
+    // enough to pass the length/coverage guards — but it is NOT a
+    // chunk-dropped copy, so it must stack, not be erased.
+    expect(
+      mergeStreamedWithFinal("abcdefghijkl", "a1b2c3d4e5f6g7h8i9j0k1l2"),
+    ).toBe("abcdefghijkl\n\na1b2c3d4e5f6g7h8i9j0k1l2");
+  });
+
   it("stitches a re-streamed boundary, dropping the duplicated seam", () => {
     // Tail of streamed repeats the head of final at a word boundary.
     expect(mergeStreamedWithFinal("The answer is 4", "answer is 4.")).toBe(

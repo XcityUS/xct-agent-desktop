@@ -1159,6 +1159,22 @@ describe("lossy streamed reasoning previews", () => {
     expect(texts).toEqual([CANONICAL, SECOND]);
   });
 
+  it("keeps a short thought that embeds only as scattered characters", () => {
+    // Review regression: a distinct short thought whose characters happen to
+    // appear in order inside the canonical text (as scattered 1-char
+    // fragments) is NOT a lossy preview and must survive the merge.
+    const merged = reconcileStreamedWithDb(
+      [STREAMED_USER("hi"), STREAMED_REASONING("abcdefghijkl", "r-scattered")],
+      [DB_USER("hi", 1), DB_REASONING("a1b2c3d4e5f6g7h8i9j0k1l2", 2)],
+    );
+
+    const texts = merged
+      .filter((m) => "kind" in m && m.kind === "reasoning")
+      .map((m) => (m as { text: string }).text);
+    expect(texts).toContain("abcdefghijkl");
+    expect(texts).toContain("a1b2c3d4e5f6g7h8i9j0k1l2");
+  });
+
   // @lat: [[chat-commands#Slash command execution#Reasoning & tool activity rows#Reasoning reconciliation#Turn-scoped matching]]
   it("does not cross-drop against a DB reasoning row from another turn", () => {
     // Turn 1 is fully reconciled (DB); turn 2's live preview happens to be a

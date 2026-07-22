@@ -76,7 +76,9 @@ With a signed-in account and no local key, one authenticated POST issues the key
 
 ### Single-flight provisioning
 
-Concurrent ensure calls (post-login hook + Providers screen mount) coalesce into a single backend key issue, preventing orphan keys.
+Concurrent ensure calls (post-login hook + Providers screen mount) coalesce into one backend key issue per profile, preventing orphan keys.
+
+The latch is **per profile** — provisioning writes that profile's `.env`, so a global latch would let profile B piggyback on A's run and report `created` without receiving a key.
 
 ### Credits for the account card
 

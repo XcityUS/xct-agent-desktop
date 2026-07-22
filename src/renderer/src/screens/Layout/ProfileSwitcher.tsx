@@ -153,12 +153,15 @@ export default function ProfileSwitcher({
   function onSearchKey(e: React.KeyboardEvent): void {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlight((h) => Math.min(flat.length - 1, h + 1));
+      // Clamp to the (possibly empty) filtered list — an empty list keeps 0
+      // rather than drifting to -1.
+      setHighlight((h) => Math.max(0, Math.min(flat.length - 1, h + 1)));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlight((h) => Math.max(0, h - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
+      // No-op when the query matches nothing — `flat[highlight]` is undefined.
       const target = flat[highlight];
       if (target) void handleSelect(target.id);
     } else if (e.key === "Escape") {

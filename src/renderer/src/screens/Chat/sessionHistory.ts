@@ -4,6 +4,7 @@ import {
   isBubbleMessage,
   normalizeMessageText,
 } from "./chatMessages";
+import { isLossyChunkCopy } from "./lossyText";
 import type { ActiveTurn, ChatMessage, ChatBubbleMessage } from "./types";
 
 /**
@@ -886,15 +887,6 @@ export function reconcileStreamedWithDb(
   );
 }
 
-/** `needle` appears in `hay` in order (not necessarily contiguously). */
-function isTextSubsequence(needle: string, hay: string): boolean {
-  let i = 0;
-  for (let j = 0; j < hay.length && i < needle.length; j++) {
-    if (needle[i] === hay[j]) i++;
-  }
-  return i === needle.length;
-}
-
 const normalizeReasoningText = (text: string): string =>
   (text || "").replace(/\s+/g, " ").trim();
 
@@ -907,12 +899,13 @@ const normalizeReasoningText = (text: string): string =>
  * "moonshotai/kimi-k3 … nous"), so its text-based reconciliation key never
  * matches the DB row and both survive the merge — the user sees the corrupt
  * partial AND the full thought stacked in one Thought block. A dropped-chunks
- * preview is, by construction, a **subsequence** of the canonical text, which
- * cleanly separates "same thought, chunks missing" (drop) from a genuinely
- * distinct second reasoning segment (keep). Scoped per turn (between user
- * rows) so identical thoughts in different turns can't cross-cancel, and only
- * a strictly shorter streamed row is dropped — equal text means the key match
- * already handled it.
+ * preview is, by construction, a concatenation of contiguous runs of the
+ * canonical text — matched by [[isLossyChunkCopy]], whose run/length/coverage
+ * guards separate "same thought, chunks missing" (drop) from a genuinely
+ * distinct short reasoning segment whose characters merely embed as scattered
+ * fragments (keep). Scoped per turn (between user rows) so identical thoughts
+ * in different turns can't cross-cancel, and only a strictly shorter streamed
+ * row is dropped — equal text means the key match already handled it.
  */
 function dropLossyStreamedReasoning(
   messages: ReadonlyArray<ChatMessage>,
@@ -938,11 +931,7 @@ function dropLossyStreamedReasoning(
       if (!isReasoning(m) || m.id.startsWith("db-r-")) continue;
       const text = normalizeReasoningText(m.text);
       if (!text) continue;
-      if (
-        canonical.some(
-          (c) => text.length < c.length && isTextSubsequence(text, c),
-        )
-      ) {
+      if (canonical.some((c) => isLossyChunkCopy(text, c))) {
         drop.add(m.id);
       }
     }

@@ -42,9 +42,12 @@ function accountSession(): { apiUrl: string; token: string } | null {
   return { apiUrl: account.apiUrl, token };
 }
 
-// Single-flight: the post-login hook and the Providers screen can both ask at
-// once; issuing two backend keys for one gap would leave an orphan.
-let ensureInFlight: Promise<EnsureHermesOneKeyResult> | null = null;
+// Single-flight **per profile**: the post-login hook and the Providers screen
+// can both ask at once; issuing two backend keys for one gap would leave an
+// orphan. Keyed by profile because provisioning writes that profile's `.env` —
+// a global latch would let profile B piggyback on profile A's run and report
+// `created` without ever receiving a key.
+const ensureInFlight = new Map<string, Promise<EnsureHermesOneKeyResult>>();
 
 /**
  * Make sure the profile has a `HERMESONE_API_KEY`: keep an existing one,
@@ -54,12 +57,15 @@ let ensureInFlight: Promise<EnsureHermesOneKeyResult> | null = null;
 export function ensureHermesOneApiKey(
   profile?: string,
 ): Promise<EnsureHermesOneKeyResult> {
-  if (!ensureInFlight) {
-    ensureInFlight = doEnsure(profile).finally(() => {
-      ensureInFlight = null;
+  const key = profile?.trim() || "default";
+  let flight = ensureInFlight.get(key);
+  if (!flight) {
+    flight = doEnsure(profile).finally(() => {
+      ensureInFlight.delete(key);
     });
+    ensureInFlight.set(key, flight);
   }
-  return ensureInFlight;
+  return flight;
 }
 
 async function doEnsure(profile?: string): Promise<EnsureHermesOneKeyResult> {

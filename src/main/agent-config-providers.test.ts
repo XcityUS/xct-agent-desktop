@@ -233,6 +233,31 @@ describe("agent-config providers (config.yaml bridge)", () => {
     });
   });
 
+  it("escapes quotes and backslashes in provider values (valid YAML)", async () => {
+    // Review regression: unescaped user input inside double-quoted YAML could
+    // produce an unparseable config.yaml. The writer escapes, the reader
+    // unescapes — the name round-trips exactly.
+    const name = 'My "Fast" \\ Provider';
+    const m = await mod();
+    m.upsertAgentUserProvider("default", {
+      name,
+      baseUrl: "https://fast.example/v1",
+      keyEnv: "FAST_KEY",
+    });
+    expect(readConfig()).toContain('name: "My \\"Fast\\" \\\\ Provider"');
+    const list = m.listAgentUserProviders("default");
+    expect(list).toHaveLength(1);
+    expect(list[0].name).toBe(name);
+    // Idempotency survives the escaping: re-upserting is still a no-op.
+    const before = readConfig();
+    m.upsertAgentUserProvider("default", {
+      name,
+      baseUrl: "https://fast.example/v1",
+      keyEnv: "FAST_KEY",
+    });
+    expect(readConfig()).toBe(before);
+  });
+
   it("is a no-op re-upserting identical values (no file rewrite)", async () => {
     const m = await mod();
     m.upsertAgentUserProvider("default", {

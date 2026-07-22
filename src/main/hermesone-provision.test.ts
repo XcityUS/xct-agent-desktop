@@ -130,6 +130,31 @@ describe("hermesone provisioning", () => {
     expect(state.envWrites).toHaveLength(1);
   });
 
+  it("does not share a flight across profiles — each gets its own key", async () => {
+    // Review regression: a global single-flight latch let profile B piggyback
+    // on profile A's provisioning and report `created` while only A's `.env`
+    // received a key.
+    fetchMock.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({ key: `hs-live-${fetchMock.mock.calls.length}` }),
+          { status: 200 },
+        ),
+    );
+    const m = await mod();
+    const [a, b] = await Promise.all([
+      m.ensureHermesOneApiKey("alpha"),
+      m.ensureHermesOneApiKey("beta"),
+    ]);
+    expect(a).toEqual({ status: "created" });
+    expect(b).toEqual({ status: "created" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(state.envWrites.map((w) => w.profile).sort()).toEqual([
+      "alpha",
+      "beta",
+    ]);
+  });
+
   // @lat: [[hermes-account-login#Hermes One account login#Auto-provisioned inference key and credits#Credits for the account card]]
   it("fetches the credit balance for the signed-in account", async () => {
     fetchMock.mockResolvedValue(

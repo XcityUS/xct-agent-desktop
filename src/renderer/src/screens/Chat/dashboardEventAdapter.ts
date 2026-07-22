@@ -1,4 +1,5 @@
 import type { ChatToolEvent } from "../../../../shared/chat-stream";
+import { isLossyChunkCopy } from "./lossyText";
 import type { ActiveTurn, ChatBubbleMessage, ChatMessage } from "./types";
 
 export interface DashboardStreamEvent<T = unknown> {
@@ -446,15 +447,6 @@ function tailHeadOverlap(a: string, b: string): number {
  * Comparison is whitespace-insensitive; every branch returns trimmed text so
  * the result doesn't depend on which branch ran.
  */
-/** `needle` appears in `hay` in order (not necessarily contiguously). */
-function isNormalizedSubsequence(needle: string, hay: string): boolean {
-  let i = 0;
-  for (let j = 0; j < hay.length && i < needle.length; j++) {
-    if (needle[i] === hay[j]) i++;
-  }
-  return i === needle.length;
-}
-
 export function mergeStreamedWithFinal(
   streamed: string,
   final: string,
@@ -471,17 +463,14 @@ export function mergeStreamedWithFinal(
 
   // Lossy re-assembly: the streamed deltas dropped chunks (e.g. the upstream
   // tagged alternate chunks as `reasoning`, so the content stream only carried
-  // a subset), leaving the streamed bubble a *subsequence* of the final text
-  // ("! What are we working on?" for "Hey! What are we working on today?").
-  // Concatenating would stack the garbled partial above the clean answer —
-  // the final text replaces it. Guarded to substantial coverage so the
-  // pre-tool-call + answer pair (#746, genuinely different texts) still
-  // stacks: a short unrelated lead-in is a subsequence of almost anything.
-  if (
-    normStreamed.length >= 12 &&
-    normStreamed.length >= 0.3 * normFinal.length &&
-    isNormalizedSubsequence(normStreamed, normFinal)
-  ) {
+  // a subset), leaving the streamed bubble a chunk-dropped copy of the final
+  // text ("! What are we working on?" for "Hey! What are we working on
+  // today?"). Concatenating would stack the garbled partial above the clean
+  // answer — the final text replaces it. The run-based matcher plus its
+  // length/coverage guards keep the pre-tool-call + answer pair (#746,
+  // genuinely different texts) on the concatenate path: unrelated sentences
+  // only embed as scattered fragments, never as contiguous chunk runs.
+  if (isLossyChunkCopy(normStreamed, normFinal)) {
     return finalContent;
   }
 
