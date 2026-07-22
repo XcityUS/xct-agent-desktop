@@ -21,6 +21,7 @@ import { MemoryEntries } from "../../screens/Memory/MemoryEntries";
 import type { MemoryData } from "../../screens/Memory/types";
 import { AppModal, AppModalTitle } from "../modal/AppModal";
 import ProfileWalletPane from "./ProfileWalletPane";
+import { OrbLoader } from "../OrbLoader";
 import type { ProfileSection } from "./ProfileModalContext";
 
 /** Mirrors the entry shape returned by `window.hermesAPI.listProfiles()`. */
@@ -384,7 +385,7 @@ export default function ProfileModal({
               <div className="profile-modal-pane profile-modal-memory-pane">
                 {memoryLoading && !memoryData ? (
                   <div className="profile-modal-loading">
-                    <div className="loading-spinner" />
+                    <OrbLoader state="searching" size={64} />
                   </div>
                 ) : memoryData ? (
                   <MemoryEntries
@@ -450,18 +451,17 @@ export default function ProfileModal({
               </div>
             )}
           </div>
-        </div>
-      ) : (
-        <div className="profile-modal-loading">
-          <div className="loading-spinner" />
-        </div>
-      )}
+        ) : (
+          <div className="profile-modal-loading">
+            <OrbLoader state="searching" size={64} />
+          </div>
+        )}
 
-      <div className="profile-modal-footer">
-        <button className="btn btn-primary btn-sm" onClick={onClose}>
-          {t("common.done")}
-        </button>
-      </div>
+        <div className="profile-modal-footer">
+          <button className="btn btn-primary btn-sm" onClick={onClose}>
+            {t("common.done")}
+          </button>
+        </div>
 
       <input
         ref={fileInputRef}
