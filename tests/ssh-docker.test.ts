@@ -214,12 +214,14 @@ describe("buildProbeSshDockerTargetCommand", () => {
     );
   });
 
-  it("verifies image, data mount, exec user, and CLI location", () => {
+  it("prefers the service user and public CLI before legacy fallbacks", () => {
     const cmd = buildProbeSshDockerTargetCommand("hermes-1");
     expect(cmd).toContain('container = "hermes-1"');
     expect(cmd).toContain("nousresearch/hermes-agent");
-    expect(cmd).toContain('"/opt/hermes/.venv/bin/hermes"');
-    expect(cmd).toContain('(None, "hermes")');
+    expect(cmd).toContain(
+      'cli_candidates = ["hermes", "/opt/hermes/bin/hermes", "/opt/hermes/.venv/bin/hermes", "/opt/hermes/venv/bin/hermes"]',
+    );
+    expect(cmd).toContain('for candidate_user in ("hermes", None):');
   });
 
   itPython("generates python that compiles", () => {

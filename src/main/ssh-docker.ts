@@ -305,7 +305,7 @@ container = ${pythonJson(containerName)}
 data_dir = ${pythonJson(HERMES_CONTAINER_DATA_DIR)}
 image_name = ${pythonJson(HERMES_DOCKER_IMAGE)}
 image_re = r"(^|/)nousresearch/hermes-agent(:|@|$)"
-cli_candidates = ["/opt/hermes/.venv/bin/hermes", "/opt/hermes/venv/bin/hermes", "hermes"]
+cli_candidates = ["hermes", "/opt/hermes/bin/hermes", "/opt/hermes/.venv/bin/hermes", "/opt/hermes/venv/bin/hermes"]
 
 def fail(msg):
     print(json.dumps({"ok": False, "error": msg}))
@@ -331,10 +331,10 @@ data_home = run([
 if not data_home:
     fail('Container "%s" has no host mount for %s, so its Hermes home is not reachable over SSH.' % (container, data_dir))
 
-# Resolve which docker-exec user can use the Hermes home inside the container:
-# container default first, then the official image's service user.
+# Prefer the official service user and public CLI shim. Current images default
+# docker exec to root; bypassing the shim can leave root-owned state behind.
 exec_user, cli_path = None, None
-for candidate_user in (None, "hermes"):
+for candidate_user in ("hermes", None):
     user_args = ["-u", candidate_user] if candidate_user else []
     probe = run(["docker", "exec"] + user_args + [container, "sh", "-c", "test -r %s && test -w %s" % (data_dir, data_dir)])
     if probe.returncode != 0:
