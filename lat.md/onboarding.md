@@ -20,7 +20,9 @@ The stroke-draw itself is pure CSS: each emblem path animates `onboardDraw` (das
 
 ## Welcome
 
-[[src/renderer/src/screens/Welcome/Welcome.tsx#Welcome]] is the default first-run view. Its no-error state renders through `OnboardHero intro` with the "HERMES ONE" eyebrow, subtitle, a gradient "Get Started" pill, and glass "Connect via SSH" / "Connect to Remote Hermes" pills. The install-error state and the SSH / remote connect panels keep the legacy `.welcome-screen` layout.
+[[src/renderer/src/screens/Welcome/Welcome.tsx#Welcome]] is the default first-run view. Its no-error state renders through `OnboardHero intro`.
+
+The hero carries the "HERMES ONE" eyebrow, subtitle, a gradient "Get Started" pill, and glass "Connect via SSH" / "Connect to Remote Hermes" pills. The install-error state and the SSH / remote connect panels keep the legacy `.welcome-screen` layout.
 
 ## Install confirm + progress
 
