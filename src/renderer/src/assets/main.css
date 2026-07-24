@@ -747,12 +747,693 @@ body:has(.shell-vibrant),
    WELCOME SCREEN
    ======================================================================== */
 .welcome-screen {
+  position: relative;
   text-align: center;
   gap: 0;
 }
 
 .welcome-logo {
   border-radius: var(--radius-lg);
+}
+
+/* ========================================================================
+   ONBOARDING HERO (shared) — Welcome / Install / Setup
+   A dark, cinematic branded chrome: aurora wash, twinkling starfield, and a
+   Hermes emblem. On the intro screen the emblem draws itself big in the centre,
+   then flies up + shrinks into its slot before the eyebrow / title / content
+   cascade in. Non-intro screens skip straight to the settled state.
+   Driven by <OnboardHero>; phase lives on [data-phase] (draw|settle|done).
+   ======================================================================== */
+
+.onboard-screen {
+  position: relative;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* The onboarding surfaces are non-selectable chrome, not documents. */
+.welcome-screen,
+.install-screen,
+.setup-screen {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* Keep editable / copyable content selectable despite the screen-wide guard. */
+.onboard-screen input,
+.onboard-screen textarea,
+.onboard-screen code,
+.onboard-screen [data-selectable],
+.welcome-screen input,
+.welcome-screen textarea,
+.welcome-screen code,
+.install-screen input,
+.install-screen textarea,
+.install-screen code,
+.setup-screen input,
+.setup-screen textarea,
+.setup-screen code {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.onboard-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.onboard-aurora {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      1100px 620px at 50% -8%,
+      rgba(64, 94, 190, 0.22) 0%,
+      rgba(64, 94, 190, 0.07) 45%,
+      rgba(0, 0, 0, 0) 70%
+    ),
+    radial-gradient(
+      900px 500px at 50% 115%,
+      rgba(30, 40, 80, 0.25) 0%,
+      rgba(0, 0, 0, 0) 65%
+    );
+  animation: onboardFade 1.6s ease 0.2s both;
+}
+
+.onboard-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(0, 0, 0, 0) 55%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+}
+
+.onboard-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(200, 214, 255, 0.9);
+  opacity: 0;
+}
+
+.onboard-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 640px;
+  margin: auto;
+  text-align: center;
+}
+
+/* ---- Settled emblem slot (holds layout; the flying logo lands here) ---- */
+.onboard-emblem {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.onboard-emblem-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 260px;
+  height: 260px;
+  margin: -130px 0 0 -130px;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    rgba(120, 150, 255, 0.14) 0%,
+    rgba(120, 150, 255, 0.04) 45%,
+    rgba(0, 0, 0, 0) 70%
+  );
+}
+
+.onboard-emblem svg {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  fill: #f2f4fa;
+  filter: drop-shadow(0 4px 22px rgba(120, 150, 255, 0.35));
+}
+
+/* ---- Flying / intro logo (big centre → draws → flies to the slot) ---- */
+.onboard-fly {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 180px;
+  height: 180px;
+  z-index: 6;
+  pointer-events: none;
+  transform-origin: center;
+  transform: translate(-50%, -50%);
+  transition: transform 0.95s cubic-bezier(0.22, 1, 0.3, 1);
+}
+
+.onboard-fly-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 400px;
+  height: 400px;
+  margin: -200px 0 0 -200px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(120, 150, 255, 0.16) 0%,
+    rgba(120, 150, 255, 0.05) 45%,
+    rgba(0, 0, 0, 0) 70%
+  );
+  animation:
+    onboardFade 1.4s ease 0.5s both,
+    onboardBreath 3.2s ease 2s infinite;
+}
+
+.onboard-fly svg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 26px rgba(130, 160, 255, 0.35));
+}
+
+.onboard-fly path {
+  fill: #f2f4fa;
+  fill-opacity: 0;
+  stroke: #dfe6ff;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+
+.onboard-fp1 {
+  stroke-width: 13;
+  animation:
+    onboardDraw 1.05s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both,
+    onboardFill 0.7s ease 1.15s both,
+    onboardStrokeOut 0.5s ease 1.5s both;
+}
+.onboard-fp2 {
+  stroke-width: 13;
+  animation:
+    onboardDraw 1.05s cubic-bezier(0.4, 0, 0.2, 1) 0.45s both,
+    onboardFill 0.7s ease 1.25s both,
+    onboardStrokeOut 0.5s ease 1.6s both;
+}
+.onboard-fp3 {
+  stroke-width: 11;
+  animation:
+    onboardDraw 1.05s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both,
+    onboardFill 0.7s ease 1.4s both,
+    onboardStrokeOut 0.5s ease 1.75s both;
+}
+.onboard-fp4 {
+  stroke-width: 11;
+  animation:
+    onboardDraw 1.05s cubic-bezier(0.4, 0, 0.2, 1) 0.75s both,
+    onboardFill 0.7s ease 1.5s both,
+    onboardStrokeOut 0.5s ease 1.85s both;
+}
+
+/* ---- Eyebrow + title ---- */
+.onboard-eyebrow {
+  margin-top: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  color: #7d88ab;
+  text-transform: uppercase;
+  opacity: 0;
+}
+
+.onboard-title {
+  margin: 14px 0 0;
+  font-size: clamp(26px, 3.2vw, 38px);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: #eef0f6;
+  opacity: 0;
+}
+
+.onboard-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  opacity: 0;
+}
+
+/* ---- Reveal cascade once the logo has settled ---- */
+.onboard-screen[data-phase="done"] .onboard-emblem {
+  animation: onboardFade 0.4s ease both;
+  opacity: 1;
+}
+.onboard-screen[data-phase="done"] .onboard-eyebrow {
+  animation: onboardRise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+.onboard-screen[data-phase="done"] .onboard-title {
+  animation: onboardRise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both;
+}
+.onboard-screen[data-phase="done"] .onboard-body {
+  animation: onboardRise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.42s both;
+}
+
+/* ---- Shared content pieces ---- */
+.onboard-subtitle {
+  margin: 26px 0 0;
+  max-width: 480px;
+  font-size: 16px;
+  line-height: 1.65;
+  color: #8b91a5;
+  text-wrap: pretty;
+}
+
+/* A standalone text action (e.g. Cancel installation) needs its own breathing
+   room since it isn't wrapped in .onboard-actions. */
+.onboard-body > .onboard-btn-text {
+  margin-top: 30px;
+}
+
+.onboard-note {
+  margin-top: 14px;
+  font-size: 13px;
+  color: #6c7186;
+}
+
+.onboard-divider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 420px;
+  gap: 16px;
+  margin: 38px 0 0;
+  color: #666c80;
+  font-size: 13px;
+}
+.onboard-divider::before,
+.onboard-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+}
+.onboard-divider::before {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+}
+.onboard-divider::after {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+/* ---- Buttons ---- */
+.onboard-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+.onboard-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.onboard-btn-primary {
+  padding: 15px 40px;
+  border: none;
+  background: linear-gradient(180deg, #4a72dd 0%, #3253b4 100%);
+  color: #f4f7ff;
+  font-size: 17px;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 14px 44px rgba(74, 114, 221, 0.35);
+}
+.onboard-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 16px 54px rgba(74, 114, 221, 0.5);
+}
+.onboard-btn-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.onboard-btn-glass {
+  padding: 12px 26px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #c3c8d8;
+  font-size: 15px;
+  font-weight: 500;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.onboard-btn-glass:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.onboard-btn-text {
+  padding: 12px 22px;
+  border: none;
+  background: transparent;
+  color: #8b91a5;
+  font-size: 15px;
+  font-weight: 500;
+}
+.onboard-btn-text:hover:not(:disabled) {
+  color: #c3c8d8;
+}
+
+.onboard-cta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 42px;
+}
+
+.onboard-connect-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.onboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+/* ---- Field + info card (Install / Setup) ---- */
+.onboard-field-label {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7d88ab;
+  margin: 32px 0 10px;
+}
+
+.onboard-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #e8eaf0;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  text-align: left;
+  box-sizing: border-box;
+}
+.onboard-field svg {
+  flex-shrink: 0;
+  color: #8b91a5;
+}
+.onboard-field code,
+.onboard-field span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onboard-note-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  text-align: left;
+  box-sizing: border-box;
+}
+.onboard-note-card svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #6f7cc0;
+}
+.onboard-note-card-title {
+  font-size: 15px;
+  color: #e2e5f0;
+  line-height: 1.45;
+}
+.onboard-note-card-sub {
+  margin-top: 4px;
+  font-size: 13.5px;
+  color: #8b91a5;
+  line-height: 1.5;
+}
+
+.onboard-hint {
+  margin-top: 26px;
+  max-width: 520px;
+  font-size: 13.5px;
+  color: #6c7186;
+  line-height: 1.55;
+}
+.onboard-hint code {
+  font-family: var(--font-mono);
+  color: #aab4d4;
+}
+
+.onboard-error {
+  margin-top: 14px;
+  color: var(--error, #e5484d);
+  font-size: 13.5px;
+}
+
+/* ---- Wider hero (installing progress / terminal log) ---- */
+.onboard-hero--wide {
+  max-width: 820px;
+}
+
+/* ---- Progress (installing) ---- */
+.onboard-progress {
+  width: 100%;
+  margin-top: 52px;
+}
+
+.onboard-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.onboard-progress-step {
+  font-size: 15px;
+  font-weight: 600;
+  color: #dfe3ef;
+}
+.onboard-progress-step b {
+  font-weight: 600;
+  color: #5b7ce0;
+}
+
+.onboard-progress-percent {
+  font-size: 15px;
+  font-weight: 600;
+  color: #5b7ce0;
+  font-variant-numeric: tabular-nums;
+}
+
+.onboard-progress-track {
+  margin-top: 12px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.onboard-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3253b4 0%, #5b7ce0 100%);
+  transition: width 0.35s ease;
+}
+.onboard-progress-fill--error {
+  background: var(--error, #e5484d);
+}
+
+.onboard-progress-detail {
+  margin-top: 14px;
+  font-size: 15px;
+  color: #8b91a5;
+  line-height: 1.5;
+}
+
+/* ---- Terminal log window ----
+   Fixed width (fills the wide column) and fixed body height so the layout
+   never shifts as log lines stream in — the body scrolls internally. */
+.onboard-terminal {
+  width: 100%;
+  margin-top: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(8, 10, 16, 0.6);
+  overflow: hidden;
+  text-align: left;
+}
+
+.onboard-terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.onboard-terminal-dots {
+  display: flex;
+  gap: 7px;
+}
+.onboard-terminal-dots span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.onboard-terminal-title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #6c7186;
+}
+
+.onboard-terminal-body {
+  height: 230px;
+  overflow-y: auto;
+  padding: 16px 20px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: #aeb4c6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- Keyframes ---- */
+@keyframes onboardFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes onboardRise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0px);
+  }
+}
+@keyframes onboardTwinkle {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+@keyframes onboardDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes onboardFill {
+  to {
+    fill-opacity: 1;
+  }
+}
+@keyframes onboardStrokeOut {
+  to {
+    stroke-opacity: 0;
+  }
+}
+@keyframes onboardBreath {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboard-aurora,
+  .onboard-fly-glow,
+  .onboard-emblem,
+  .onboard-eyebrow,
+  .onboard-title,
+  .onboard-body {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .onboard-particle {
+    display: none;
+  }
+  .onboard-fly {
+    display: none;
+  }
+  .onboard-fly path {
+    fill-opacity: 1;
+    stroke-opacity: 0;
+    stroke-dashoffset: 0;
+  }
 }
 
 .welcome-title {
