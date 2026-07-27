@@ -170,8 +170,6 @@ export default function Office3D({
   location = "city",
   onFocusBuilding,
   onAtmActivate,
-  tellerLabel,
-  onTellerActivate,
   onCarActivate,
   onDeskActivate,
   walkMode = false,
@@ -190,10 +188,6 @@ export default function Office3D({
   onFocusBuilding?: (building: BuildingId | null) => void;
   /** Bank interior: an ATM was clicked. */
   onAtmActivate?: () => void;
-  /** Bank interior: pre-translated teller hover label. */
-  tellerLabel?: string;
-  /** Bank interior: a teller was clicked (opens the representative menu). */
-  onTellerActivate?: () => void;
   /** Showroom interior: a display car was clicked. */
   onCarActivate?: (car: ShowroomCar) => void;
   /** Office interior: a desk was clicked (its owner's agent id). */
@@ -405,10 +399,10 @@ export default function Office3D({
         ? buildPlayerInteractions({
             workstations,
             agentNameById,
-            tellerLabel: tellerLabel ?? "Teller",
+            tellerLabel: "Teller",
           })
         : [],
-    [walkMode, workstations, agentNameById, tellerLabel],
+    [walkMode, workstations, agentNameById],
   );
 
   // Which scene layers exist depends on the active location: interiors mount
@@ -532,8 +526,6 @@ export default function Office3D({
           interactive
           roof={walkMode}
           onAtmActivate={onAtmActivate}
-          tellerLabel={tellerLabel}
-          onTellerActivate={onTellerActivate}
         />
       )}
       {inShowroom && (

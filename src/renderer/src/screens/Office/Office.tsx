@@ -16,9 +16,7 @@ import { useProfileModal } from "../../components/profile/ProfileModalContext";
 import oneChatIcon from "../../assets/images/one-chat.svg";
 import OneChatModal from "./OneChatModal";
 import Office3D from "./office3d/Office3D";
-import RepInteractionPanel from "./RepInteractionPanel";
-import { officeAgentsChanged, profilesToOfficeAgents } from "./office3d/agents";
-import { getRepresentative } from "./office3d/interactions/registry";
+import { profilesToOfficeAgents } from "./office3d/agents";
 import type { ShowroomCar } from "./office3d/objects/CarShowroom";
 import type { BuildingId, OfficeLocation } from "./office3d/core/locations";
 import type { AgentPlace, OfficeAgent } from "./office3d/core/types";
@@ -67,8 +65,6 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     null,
   );
   const [carCard, setCarCard] = useState<ShowroomCar | null>(null);
-  // Space-representative menu (bank tellers today): which rep's panel is open.
-  const [activeRepId, setActiveRepId] = useState<string | null>(null);
   // GTA-style walk mode: the user's avatar walks the city; interiors load by
   // walking through doorways and interactions fire with E near their points.
   const [walkMode, setWalkMode] = useState(false);
@@ -150,9 +146,7 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     try {
       const profiles = await window.hermesAPI.listProfiles();
       const next = profilesToOfficeAgents(profiles);
-      setAgents((prev) => {
-        return officeAgentsChanged(prev, next) ? next : prev;
-      });
+      setAgents(next);
     } catch {
       // Transient IPC failures are ignored; the next tick retries.
     }
@@ -188,13 +182,11 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     setLocation(building);
     setFocusedBuilding(null);
     setCarCard(null);
-    setActiveRepId(null);
   }, []);
 
   const exitToCity = useCallback(() => {
     setLocation("city");
     setCarCard(null);
-    setActiveRepId(null);
   }, []);
 
   const enterWalkMode = useCallback(() => {
@@ -204,7 +196,6 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     setLocation("city");
     setFocusedBuilding(null);
     setCarCard(null);
-    setActiveRepId(null);
   }, []);
 
   const exitWalkMode = useCallback(() => {
@@ -212,7 +203,6 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     setNearby(null);
     setLocation("city");
     setCarCard(null);
-    setActiveRepId(null);
   }, []);
 
   // Walk mode is a foreground control scheme — leaving the tab exits it so
@@ -226,7 +216,6 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
   const handlePlayerPlace = useCallback((place: AgentPlace) => {
     setLocation(place === "outside" ? "city" : place);
     setCarCard(null);
-    setActiveRepId(null);
   }, []);
 
   // Escape exits walk mode, or backs out of an interior to the city view.
@@ -253,15 +242,6 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     [],
   );
 
-  // Bank teller → the representative menu (account status, balances, new
-  // accounts) for a chosen agent.
-  const handleTellerActivate = useCallback(() => {
-    setActiveRepId("bank-teller");
-  }, []);
-
-  const closeRepPanel = useCallback(() => setActiveRepId(null), []);
-  const activeRep = getRepresentative(activeRepId);
-
   // Office desk → select its owner (opens the agent details sidebar).
   const handleDeskActivate = useCallback(
     (agentId: string) => setSelectedId(agentId),
@@ -276,10 +256,9 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
       if (e.code !== "KeyE" || isEditableTarget(e.target)) return;
       if (e.metaKey || e.ctrlKey) return;
       if (nearby.kind === "atm") handleAtmActivate();
-      else if (nearby.kind === "teller") handleTellerActivate();
       else if (nearby.kind === "car")
         handleCarActivate({ name: nearby.carName, tint: nearby.carTint });
-      else handleDeskActivate(nearby.agentId);
+      else if (nearby.kind === "desk") handleDeskActivate(nearby.agentId);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -288,7 +267,6 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
     walkMode,
     nearby,
     handleAtmActivate,
-    handleTellerActivate,
     handleCarActivate,
     handleDeskActivate,
   ]);
@@ -427,8 +405,6 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
           location={location}
           onFocusBuilding={setFocusedBuilding}
           onAtmActivate={handleAtmActivate}
-          tellerLabel={t("office.repBankTeller")}
-          onTellerActivate={handleTellerActivate}
           onCarActivate={handleCarActivate}
           onDeskActivate={handleDeskActivate}
           walkMode={walkMode}
@@ -763,16 +739,7 @@ function Office({ visible }: OfficeProps): React.JSX.Element {
           agents={positionedAgents}
         />
 
-        {activeRep && (
-          <RepInteractionPanel
-            rep={activeRep}
-            agents={positionedAgents}
-            initialAgentId={selectedId}
-            onClose={closeRepPanel}
-          />
-        )}
-
-        {selectedAgent && !activeRep && (
+        {selectedAgent && (
           <aside
             style={{
               position: "absolute",

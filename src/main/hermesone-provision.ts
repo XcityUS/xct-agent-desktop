@@ -1,12 +1,11 @@
 // @lat: [[hermes-account-login#Hermes One account login#Auto-provisioned inference key and credits]]
 import { hostname } from "os";
 import {
-  findAccountProfile,
   getAccessToken,
   getAccount,
 } from "./account-store";
-import { apiHeaders } from "./hermes-account";
 import { readEnv, setEnvValue } from "./config";
+import { getActiveProfileNameSync } from "./utils";
 
 /**
  * Convenience layer over the signed-in Hermes One account: users get model
@@ -34,8 +33,7 @@ export interface HermesOneCreditsResult {
 }
 
 function accountSession(): { apiUrl: string; token: string } | null {
-  const accountProfile = findAccountProfile();
-  if (accountProfile === null) return null;
+  const accountProfile = getActiveProfileNameSync();
   const account = getAccount(accountProfile);
   const token = getAccessToken(accountProfile);
   if (!account || !token) return null;
@@ -84,7 +82,7 @@ async function doEnsure(profile?: string): Promise<EnsureHermesOneKeyResult> {
     res = await fetch(`${session.apiUrl}/api/credits/keys`, {
       method: "POST",
       headers: {
-        ...apiHeaders(),
+        "content-type": "application/json",
         authorization: `Bearer ${session.token}`,
       },
       // The console's key list shows this name, so the user can tell where
@@ -129,7 +127,6 @@ export async function fetchHermesOneCredits(): Promise<HermesOneCreditsResult> {
   try {
     const res = await fetch(`${session.apiUrl}/api/credits/balance?limit=1`, {
       headers: {
-        ...apiHeaders(false),
         authorization: `Bearer ${session.token}`,
       },
     });

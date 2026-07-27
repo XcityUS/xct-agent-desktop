@@ -5,7 +5,6 @@ import ProfileAvatar from "../../components/common/ProfileAvatar";
 import { useProfileModal } from "../../components/profile/ProfileModalContext";
 
 interface ProfileInfo {
-  id: string;
   name: string;
   isDefault: boolean;
   isActive: boolean;
@@ -17,7 +16,7 @@ interface ProfileInfo {
 }
 
 interface ProfileSwitcherProps {
-  /** Id of the currently active profile ("default" for the base workspace). */
+  /** Name of the currently active profile ("default" for the base workspace). */
   activeProfile: string;
   /** Called after a successful switch so the shell can reset chat state. */
   onSwitch: (name: string) => void;
@@ -98,9 +97,9 @@ export default function ProfileSwitcher({
     return () => cancelAnimationFrame(id);
   }, [switchOpen, load]);
 
-  const activeInfo = profiles.find((p) => p.id === activeProfile);
+  const activeInfo = profiles.find((p) => p.name === activeProfile);
   const hasDefaultFallbackName =
-    activeInfo?.isDefault && activeInfo.name === activeInfo.id;
+    activeInfo?.isDefault && activeInfo.name === activeProfile;
   const label =
     activeInfo && !hasDefaultFallbackName
       ? activeInfo.name
@@ -131,11 +130,11 @@ export default function ProfileSwitcher({
   const matches = (p: ProfileInfo): boolean =>
     !q ||
     p.name.toLowerCase().includes(q) ||
-    p.id.toLowerCase().includes(q) ||
+    p.name.toLowerCase().includes(q) ||
     (p.model || "").toLowerCase().includes(q);
   // Active profile floats to the top of its group; the rest keep list order.
   const byActiveFirst = (a: ProfileInfo, b: ProfileInfo): number =>
-    Number(b.id === activeProfile) - Number(a.id === activeProfile);
+    Number(b.name === activeProfile) - Number(a.name === activeProfile);
   const filtered = profiles.filter(matches);
   const running = filtered.filter((p) => p.gatewayRunning).sort(byActiveFirst);
   const stopped = filtered.filter((p) => !p.gatewayRunning).sort(byActiveFirst);
@@ -163,7 +162,7 @@ export default function ProfileSwitcher({
       e.preventDefault();
       // No-op when the query matches nothing — `flat[highlight]` is undefined.
       const target = flat[highlight];
-      if (target) void handleSelect(target.id);
+      if (target) void handleSelect(target.name);
     } else if (e.key === "Escape") {
       e.stopPropagation();
       setSwitchOpen(false);
@@ -171,20 +170,20 @@ export default function ProfileSwitcher({
   }
 
   function renderRow(p: ProfileInfo, flatIndex: number): React.JSX.Element {
-    const isActive = p.id === activeProfile;
+    const isActive = p.name === activeProfile;
     return (
       <button
-        key={p.id}
+        key={p.name}
         className={`profile-menu-item ${isActive ? "active" : ""} ${
           flatIndex === highlight ? "highlighted" : ""
         }`}
         role="menuitemradio"
         aria-checked={isActive}
-        onClick={() => void handleSelect(p.id)}
+        onClick={() => void handleSelect(p.name)}
         onMouseMove={() => setHighlight(flatIndex)}
       >
         <ProfileAvatar
-          name={p.id}
+          name={p.name}
           color={p.color}
           avatar={p.avatar}
           size={32}

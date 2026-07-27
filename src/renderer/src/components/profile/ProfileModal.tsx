@@ -451,6 +451,7 @@ export default function ProfileModal({
               </div>
             )}
           </div>
+        </div>
         ) : (
           <div className="profile-modal-loading">
             <OrbLoader state="searching" size={64} />
