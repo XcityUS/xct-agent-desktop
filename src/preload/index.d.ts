@@ -9,10 +9,13 @@ import type {
   WalletMutationResult,
 } from "../shared/wallets";
 import type { TokenBalancesResponse } from "../shared/tokens";
+import type { CustomProviderRecord } from "../shared/custom-providers";
 import type {
   DeviceCodeInfo,
+  EnsureHermesOneKeyResult,
   HermesAccount,
   HermesAccountUser,
+  HermesOneCreditsResult,
 } from "../shared/account";
 import type {
   RegistryKind,
@@ -267,6 +270,8 @@ interface HermesAPI {
   onAccountLoginProgress: (callback: (chunk: string) => void) => () => void;
   getAccount: (profile?: string) => Promise<HermesAccount | null>;
   accountLogout: (profile?: string) => Promise<{ success: boolean }>;
+  ensureHermesOneKey: (profile?: string) => Promise<EnsureHermesOneKeyResult>;
+  getHermesOneCredits: () => Promise<HermesOneCreditsResult>;
 
   getLocale: () => Promise<AppLocale>;
   setLocale: (locale: AppLocale) => Promise<AppLocale>;
@@ -337,6 +342,7 @@ interface HermesAPI {
       keyPath: string;
       remotePort: number;
       localPort: number;
+      dockerContainerName?: string;
     };
   }>;
   setConnectionConfig: (
@@ -363,6 +369,7 @@ interface HermesAPI {
         keyPath: string;
         remotePort: number;
         localPort: number;
+        dockerContainerName?: string;
       };
     }) => void,
   ) => () => void;
@@ -373,7 +380,24 @@ interface HermesAPI {
     keyPath: string,
     remotePort: number,
     localPort: number,
+    dockerContainerName?: string,
   ) => Promise<boolean>;
+  inspectSshHermesTarget: (
+    host: string,
+    port: number,
+    username: string,
+    keyPath: string,
+    remotePort: number,
+    dockerContainerName?: string,
+  ) => Promise<import("../shared/ssh-docker").SshHermesTargetInspection>;
+  provisionSshDockerTarget: (
+    host: string,
+    port: number,
+    username: string,
+    keyPath: string,
+    remotePort: number,
+    dockerContainerName: string,
+  ) => Promise<import("../shared/ssh-docker").SshDockerProvisionResult>;
   testRemoteConnection: (url: string, apiKey?: string) => Promise<boolean>;
   testSshConnection: (
     host: string,
@@ -642,6 +666,15 @@ interface HermesAPI {
     name: string,
   ) => Promise<{ success: boolean; error?: string }>;
   listWallets: (profile?: string) => Promise<ProfileWallet[]>;
+  listCustomProviders: (profile?: string) => Promise<CustomProviderRecord[]>;
+  upsertCustomProvider: (
+    profile: string | undefined,
+    input: { name: string; baseUrl: string },
+  ) => Promise<CustomProviderRecord | null>;
+  removeCustomProvider: (
+    profile: string | undefined,
+    name: string,
+  ) => Promise<void>;
   createWallet: (
     profile?: string,
     name?: string,
@@ -797,6 +830,9 @@ interface HermesAPI {
       model: string;
       baseUrl: string;
       providerLabel?: string;
+      contextLength?: number;
+      capabilities?: string[];
+      modalities?: { input?: string[]; output?: string[] };
       createdAt: number;
     }>
   >;
@@ -823,7 +859,46 @@ interface HermesAPI {
     fields: Record<string, string>,
     contextLength?: number | null,
   ) => Promise<boolean>;
+  listModelDefinitions: () => Promise<
+    Array<{
+      model: string;
+      name?: string;
+      contextLength?: number;
+      capabilities?: string[];
+      modalities?: { input?: string[]; output?: string[] };
+      createdAt: number;
+      updatedAt: number;
+    }>
+  >;
+  getModelDefinition: (model: string) => Promise<{
+    model: string;
+    name?: string;
+    contextLength?: number;
+    capabilities?: string[];
+    modalities?: { input?: string[]; output?: string[] };
+    createdAt: number;
+    updatedAt: number;
+  } | null>;
+  setModelDefinition: (
+    model: string,
+    patch: {
+      name?: string;
+      contextLength?: number | null;
+      capabilities?: string[];
+      modalities?: { input?: string[]; output?: string[] };
+    },
+  ) => Promise<{
+    model: string;
+    name?: string;
+    contextLength?: number;
+    capabilities?: string[];
+    modalities?: { input?: string[]; output?: string[] };
+    createdAt: number;
+    updatedAt: number;
+  } | null>;
+  removeModelDefinition: (model: string) => Promise<boolean>;
   onModelLibraryChanged: (callback: () => void) => () => void;
+  onCustomProvidersChanged: (callback: () => void) => () => void;
 
   // Claw3D
   claw3dStatus: () => Promise<{

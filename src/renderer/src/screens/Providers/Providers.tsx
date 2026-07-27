@@ -11,12 +11,29 @@ import BrandLogo from "../../components/common/BrandLogo";
 import OAuthLoginModal from "../../components/OAuthLoginModal";
 import HermesAccountModal from "../../components/HermesAccountModal";
 import ProviderKeysSection from "../../components/ProviderKeysSection";
-import Models, { type ModelsTab } from "../Models/Models";
+import RegistryBrowserModal from "../../components/RegistryBrowserModal";
+import AuxiliaryTasksSection from "../../components/AuxiliaryTasksSection";
 import { useDiscoveredModels } from "../../hooks/useDiscoveredModels";
-import { KeyRound, Layers, Workflow, User } from "../../assets/icons";
-import { ChevronDown, X } from "lucide-react";
+import { KeyRound, Workflow, User } from "../../assets/icons";
+import {
+  ChevronDown,
+  X,
+  LayoutGrid,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Coins,
+} from "lucide-react";
 import { customProviderEnvKey } from "../../../../shared/url-key-map";
 import type { HermesAccount } from "../../../../shared/account";
+
+/** Preview a stored key as prefix + dots + last 4, so a set key is recognisable
+ * without exposing it. */
+function maskKey(value: string): string {
+  const v = value.trim();
+  if (v.length <= 8) return "•".repeat(Math.max(4, v.length));
+  return `${v.slice(0, 3)}${"•".repeat(7)}${v.slice(-4)}`;
+}
 
 // config.yaml stores OpenAI-compatible providers as `custom` + base_url (the
 // agent can't resolve their brand id). Map a loaded (provider, baseUrl) back to
@@ -84,12 +101,17 @@ function LogoSelect<T extends { key: string }>({
         {active && (
           <BrandLogo provider={brandOf(active)} size={18} matchTheme={true} />
         )}
-        <span className="logo-select-value">{active ? labelOf(active) : ""}</span>
+        <span className="logo-select-value">
+          {active ? labelOf(active) : ""}
+        </span>
         <ChevronDown size={16} className="logo-select-chevron" aria-hidden />
       </button>
       {open && (
         <>
-          <div className="logo-select-backdrop" onClick={() => setOpen(false)} />
+          <div
+            className="logo-select-backdrop"
+            onClick={() => setOpen(false)}
+          />
           <div className="logo-select-menu">
             {options.map((o) => (
               <button
@@ -134,14 +156,18 @@ function Providers({
   visible?: boolean;
 }): React.JSX.Element {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<"providers" | ModelsTab>(
+  const [activeTab, setActiveTab] = useState<"providers" | "auxiliary">(
     "providers",
   );
+  // Curated-registry browser (relocated from the removed Models screen).
+  const [registryOpen, setRegistryOpen] = useState(false);
 
   // Env / API keys
   const [env, setEnv] = useState<Record<string, string>>({});
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+  // Which key row is expanded into an editable input ("Add key" / edit).
+  const [editingKey, setEditingKey] = useState<string | null>(null);
 
   // Model config
   const [modelProvider, setModelProvider] = useState("auto");
@@ -152,6 +178,11 @@ function Providers({
   // configured models. Sourced from the model library (models.json).
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [libModels, setLibModels] = useState<LibModel[]>([]);
+  // Configured custom providers from the desktop store — so the model picker
+  // lists a keyed custom provider even before any model is saved under it.
+  const [customProviders, setCustomProviders] = useState<
+    { name: string; baseUrl: string }[]
+  >([]);
   const [pickGroupKey, setPickGroupKey] = useState("");
   const [pickModel, setPickModel] = useState("");
   const modelLoaded = useRef(false);
@@ -175,6 +206,8 @@ function Providers({
   // Hermes account (device login). `account` is the signed-in profile or null.
   const [account, setAccount] = useState<HermesAccount | null>(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  // AI-credit balance for the account card (null = signed out / unavailable).
+  const [credits, setCredits] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
     void window.hermesAPI.getAccount(profile).then((a) => {
@@ -184,6 +217,37 @@ function Providers({
       cancelled = true;
     };
   }, [profile]);
+
+  // Hermes One convenience layer: with a signed-in account, surface the
+  // credit balance and make sure the profile has an auto-provisioned
+  // HERMESONE_API_KEY (no-op when one exists; the main process guards
+  // remote/SSH modes). A freshly created key means the env just changed
+  // under us — re-read it so the Hermes One card + picker appear now, not
+  // on the next visit.
+  useEffect(() => {
+    let cancelled = false;
+    if (!account) {
+      setCredits(null);
+      return;
+    }
+    void window.hermesAPI
+      .getHermesOneCredits()
+      .then((r) => {
+        if (!cancelled) setCredits(r.balance);
+      })
+      .catch(() => {});
+    void window.hermesAPI
+      .ensureHermesOneKey(profile)
+      .then(async (r) => {
+        if (r.status !== "created" || cancelled) return;
+        const envData = await window.hermesAPI.getEnv(profile);
+        if (!cancelled) setEnv(envData);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [account, profile]);
 
   // Per-key debounce timers for env auto-save on change. Previously env
   // values were persisted only on input blur, so users who clicked the
@@ -470,23 +534,36 @@ function Providers({
         models: byBrand.get(brand) ?? [],
       });
     }
-    // 2) Named custom providers whose dedicated key is set.
+    // 2) Named custom providers whose dedicated key is set. Source labels from
+    //    the desktop store (providers.json) unioned with any legacy providers
+    //    that only exist as models.json rows, so a keyed provider lists even
+    //    with zero saved models (discovery fills its list from the base URL).
+    const labelBaseUrls = new Map<string, string>();
+    for (const cp of customProviders) labelBaseUrls.set(cp.name, cp.baseUrl);
     for (const [label, models] of byLabel) {
+      if (!labelBaseUrls.has(label))
+        labelBaseUrls.set(label, models[0]?.baseUrl ?? "");
+    }
+    for (const [label, storedBaseUrl] of labelBaseUrls) {
       const keyEnv = customProviderEnvKey(label);
       if (!isSet(keyEnv)) continue;
+      const models = byLabel.get(label) ?? [];
       out.push({
         key: `label:${label}`,
         brand: "custom",
         label,
         provider: "custom",
-        baseUrl: models[0]?.baseUrl ?? "",
+        // Prefer the authoritative providers.json base URL so an edited endpoint
+        // routes newly picked models correctly; fall back to a saved model's URL
+        // only for orphan records whose stored base URL is blank.
+        baseUrl: storedBaseUrl || models[0]?.baseUrl || "",
         keyEnv,
         providerLabel: label,
         models,
       });
     }
     return out;
-  }, [libModels, env, t]);
+  }, [libModels, customProviders, env, t]);
 
   const activeProvider =
     pickerProviders.find((p) => p.key === pickGroupKey) ?? null;
@@ -496,7 +573,9 @@ function Providers({
   const pickDiscovery = useDiscoveredModels({
     provider: activeProvider?.provider ?? "auto",
     baseUrl: activeProvider?.baseUrl || undefined,
-    apiKey: activeProvider ? env[activeProvider.keyEnv] || undefined : undefined,
+    apiKey: activeProvider
+      ? env[activeProvider.keyEnv] || undefined
+      : undefined,
     profile,
     enabled: modelPickerOpen && !!activeProvider,
   });
@@ -518,12 +597,11 @@ function Providers({
           m.model === modelName &&
           displayProviderFromConfig(m.provider, m.baseUrl) === modelProvider,
       );
-      const curKey =
-        cur?.providerLabel
-          ? `label:${cur.providerLabel}`
-          : cur
-            ? `brand:${displayProviderFromConfig(cur.provider, cur.baseUrl)}`
-            : "";
+      const curKey = cur?.providerLabel
+        ? `label:${cur.providerLabel}`
+        : cur
+          ? `brand:${displayProviderFromConfig(cur.provider, cur.baseUrl)}`
+          : "";
       if (pickerProviders.some((p) => p.key === curKey)) return curKey;
       return pickerProviders[0]?.key ?? "";
     });
@@ -540,8 +618,12 @@ function Providers({
   }, [modelPickerOpen, pickModelOptions, modelName]);
 
   async function openModelPicker(): Promise<void> {
-    const all = (await window.hermesAPI.listModels()) as LibModel[];
+    const [all, customs] = await Promise.all([
+      window.hermesAPI.listModels() as Promise<LibModel[]>,
+      window.hermesAPI.listCustomProviders(profile).catch(() => []),
+    ]);
     setLibModels(all);
+    setCustomProviders(customs);
     setModelPickerOpen(true);
   }
 
@@ -576,9 +658,7 @@ function Providers({
     // Re-picking a model must not drop it to "" — the save-side canonical
     // fill would silently flip a mainland user to the intl endpoint (#825).
     const keepDashScopeUrl =
-      nextProvider === "alibaba" &&
-      modelProvider === "alibaba" &&
-      modelBaseUrl;
+      nextProvider === "alibaba" && modelProvider === "alibaba" && modelBaseUrl;
     setModelProvider(nextProvider);
     setModelName(saved.model);
     setModelBaseUrl(
@@ -598,13 +678,6 @@ function Providers({
           {t("navigation.providers")}
         </button>
         <button
-          className={`models-tab ${activeTab === "models" ? "active" : ""}`}
-          onClick={() => setActiveTab("models")}
-        >
-          <Layers size={16} />
-          {t("models.title")}
-        </button>
-        <button
           className={`models-tab ${activeTab === "auxiliary" ? "active" : ""}`}
           onClick={() => setActiveTab("auxiliary")}
         >
@@ -619,20 +692,59 @@ function Providers({
             <div className="settings-section-title">
               {t("providers.hermesAccount.sectionTitle")}
             </div>
-            <p className="settings-section-hint">
-              {t("providers.hermesAccount.sectionHint")}
-            </p>
+            {!account && (
+              <p className="settings-section-hint">
+                {t("providers.hermesAccount.sectionHint")}
+              </p>
+            )}
             {account ? (
-              <div className="hermes-account-summary">
-                <span className="hermes-account-identity">
-                  <User size={16} />
-                  <span>
-                    {t("providers.hermesAccount.signedInAs")}{" "}
-                    <strong>
-                      {account.user.email ||
-                        account.user.name ||
-                        account.user.id}
-                    </strong>
+              <div className="hermes-account-card">
+                {account.user.avatarUrl ? (
+                  <img
+                    className="hermes-account-avatar"
+                    src={account.user.avatarUrl}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span
+                    className="hermes-account-avatar hermes-account-avatar-letter"
+                    aria-hidden="true"
+                  >
+                    {(account.user.name || account.user.email || "?")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+                )}
+                <span className="hermes-account-who">
+                  <span className="hermes-account-name">
+                    {account.user.name || account.user.email || account.user.id}
+                  </span>
+                  {account.user.name && account.user.email && (
+                    <span className="hermes-account-email">
+                      {account.user.email}
+                    </span>
+                  )}
+                  <span className="hermes-account-chips">
+                    <span className="hermes-account-chip is-connected">
+                      <span className="hermes-account-dot" aria-hidden="true" />
+                      {t("providers.hermesAccount.connected")}
+                    </span>
+                    <span className="hermes-account-chip">
+                      <RefreshCw size={11} aria-hidden="true" />
+                      {t("providers.hermesAccount.syncOn")}
+                    </span>
+                    {credits !== null && (
+                      <span
+                        className="hermes-account-chip"
+                        title={t("providers.hermesAccount.creditsTitle")}
+                      >
+                        <Coins size={11} aria-hidden="true" />
+                        {t("providers.hermesAccount.credits", {
+                          amount: credits.toFixed(2),
+                        })}
+                      </span>
+                    )}
                   </span>
                 </span>
                 <button
@@ -661,22 +773,32 @@ function Providers({
           <div className="settings-section">
             <div className="settings-section-title settings-section-title-row">
               <span>
-                {t("common.model")}
+                {t("common.activeModel")}
                 {modelSaved && (
                   <span className="settings-saved" style={{ marginLeft: 8 }}>
                     {t("common.saved")}
                   </span>
                 )}
               </span>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => void openModelPicker()}
-              >
-                {isConfigured
-                  ? t("common.change")
-                  : t("providers.model.select")}
-              </button>
+              <div className="settings-section-title-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setRegistryOpen(true)}
+                >
+                  <LayoutGrid size={14} />
+                  {t("models.browseRegistry")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => void openModelPicker()}
+                >
+                  {isConfigured
+                    ? t("common.change")
+                    : t("providers.model.select")}
+                </button>
+              </div>
             </div>
 
             {isConfigured ? (
@@ -703,7 +825,6 @@ function Providers({
             )}
           </div>
 
-
           {/* Provider configuration (keys + models). Placed above the
               credential pool: it's the primary, user-friendly surface for
               configuring providers and the models the top selector picks from;
@@ -724,6 +845,7 @@ function Providers({
                   onBlur={handleBlur}
                   onToggleVisibility={toggleVisibility}
                   onRemove={handleRemove}
+                  profile={profile}
                 />
               </div>
             ) : null;
@@ -840,47 +962,101 @@ function Providers({
             return (
               <div key={section.title} className="settings-section">
                 <div className="settings-section-title">{t(section.title)}</div>
-                <div>
-                  {section.items.map((field) => (
-                    <div key={field.key} className="settings-field">
-                      <label className="settings-field-label">
-                        {t(field.label)}
-                        {savedKey === field.key && (
-                          <span className="settings-saved">
-                            {t("common.saved")}
+                <div className="settings-key-list">
+                  {section.items.map((field) => {
+                    const value = env[field.key] || "";
+                    const hasValue = value.trim().length > 0;
+                    const isEditing = editingKey === field.key;
+                    const revealed = visibleKeys.has(field.key);
+                    // Short name: drop a trailing "… API Key" / "… Key" so the
+                    // row reads as the tool, not "X API Key".
+                    const name = t(field.label).replace(
+                      /\s+(API\s+)?Key$/i,
+                      "",
+                    );
+                    return (
+                      <div key={field.key} className="settings-key-row">
+                        <div className="settings-key-info">
+                          <span className="settings-key-name">
+                            {name}
+                            {savedKey === field.key && (
+                              <span className="settings-saved">
+                                {t("common.saved")}
+                              </span>
+                            )}
                           </span>
-                        )}
-                      </label>
-                      <div className="settings-input-row">
-                        <input
-                          className="input"
-                          type={
-                            field.type === "password" &&
-                            !visibleKeys.has(field.key)
-                              ? "password"
-                              : "text"
-                          }
-                          value={env[field.key] || ""}
-                          onChange={(e) =>
-                            handleChange(field.key, e.target.value)
-                          }
-                          onBlur={() => handleBlur(field.key)}
-                          placeholder={t(field.label)}
-                        />
-                        {field.type === "password" && (
-                          <button
-                            className="btn-ghost settings-toggle-btn"
-                            onClick={() => toggleVisibility(field.key)}
-                          >
-                            {visibleKeys.has(field.key)
-                              ? t("common.hide")
-                              : t("common.show")}
-                          </button>
-                        )}
+                          <span className="settings-key-desc">
+                            {t(field.hint)}
+                          </span>
+                        </div>
+                        <div className="settings-key-action">
+                          {isEditing ? (
+                            <input
+                              className="input settings-key-input"
+                              autoFocus
+                              type={
+                                field.type === "password" && !revealed
+                                  ? "password"
+                                  : "text"
+                              }
+                              value={value}
+                              onChange={(e) =>
+                                handleChange(field.key, e.target.value)
+                              }
+                              onBlur={() => {
+                                handleBlur(field.key);
+                                setEditingKey(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === "Escape") {
+                                  e.preventDefault();
+                                  e.currentTarget.blur();
+                                }
+                              }}
+                              placeholder={t(field.label)}
+                            />
+                          ) : hasValue ? (
+                            <>
+                              <button
+                                type="button"
+                                className="settings-key-masked"
+                                onClick={() => setEditingKey(field.key)}
+                                title={t("common.edit")}
+                              >
+                                {revealed ? value : maskKey(value)}
+                              </button>
+                              {field.type === "password" && (
+                                <button
+                                  type="button"
+                                  className="settings-key-eye"
+                                  onClick={() => toggleVisibility(field.key)}
+                                  aria-label={
+                                    revealed
+                                      ? t("common.hide")
+                                      : t("common.show")
+                                  }
+                                >
+                                  {revealed ? (
+                                    <EyeOff size={15} />
+                                  ) : (
+                                    <Eye size={15} />
+                                  )}
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="settings-key-add"
+                              onClick={() => setEditingKey(field.key)}
+                            >
+                              {t("common.addKey")}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="settings-field-hint">{t(field.hint)}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -937,10 +1113,16 @@ function Providers({
           {/* Active-model picker: choose a configured provider → one of its
               configured models. The key is resolved automatically at runtime. */}
           {modelPickerOpen && (
-            <div className="models-modal-overlay" onClick={() => setModelPickerOpen(false)}>
-              <div className="models-modal provider-modal" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="models-modal-overlay"
+              onClick={() => setModelPickerOpen(false)}
+            >
+              <div
+                className="models-modal model-select-modal"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="models-modal-header">
-                  <h2 className="models-modal-title provider-modal-title">
+                  <h2 className="models-modal-title model-select-title">
                     {t("providers.model.pickerTitle")}
                   </h2>
                   <button
@@ -1018,22 +1200,10 @@ function Providers({
         </>
       )}
 
-      {activeTab === "models" && (
-        <Models
-          activeTab="models"
-          embedded
-          showTabs={false}
-          visible={visible}
-        />
-      )}
+      {activeTab === "auxiliary" && <AuxiliaryTasksSection visible={visible} />}
 
-      {activeTab === "auxiliary" && (
-        <Models
-          activeTab="auxiliary"
-          embedded
-          showTabs={false}
-          visible={visible}
-        />
+      {registryOpen && (
+        <RegistryBrowserModal onClose={() => setRegistryOpen(false)} />
       )}
     </div>
   );

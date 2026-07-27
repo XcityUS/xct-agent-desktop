@@ -816,6 +816,7 @@ function Layout({
                 onLoadingChange={handleRunLoading}
                 onSessionIdChange={handleRunSessionId}
                 onTitleChange={handleRunTitle}
+                agentAppearance={getAppearance(run.profile)}
               />
             </div>
           ))}

@@ -6,7 +6,7 @@ import {
   Puzzle,
   Settings,
   Signal,
-  Sparkles,
+  Drama,
   Trash,
   User,
   Wallet,
@@ -21,6 +21,8 @@ import { MemoryEntries } from "../../screens/Memory/MemoryEntries";
 import type { MemoryData } from "../../screens/Memory/types";
 import { AppModal, AppModalTitle } from "../modal/AppModal";
 import ProfileWalletPane from "./ProfileWalletPane";
+import { OrbLoader } from "../OrbLoader";
+import type { ProfileSection } from "./ProfileModalContext";
 
 /** Mirrors the entry shape returned by `window.hermesAPI.listProfiles()`. */
 interface ProfileInfo {
@@ -48,14 +50,9 @@ export interface ProfileModalProps {
   onChanged?: () => void;
   /** Fired after the profile is deleted, before the modal closes. */
   onDeleted?: (name: string) => void;
+  /** Section to show when the modal opens; defaults to "profile". */
+  initialSection?: ProfileSection;
 }
-
-type ProfileSection =
-  | "profile"
-  | "persona"
-  | "agentMemory"
-  | "wallet"
-  | "advanced";
 type ProfileChipIcon = React.ComponentType<{
   size?: number;
   className?: string;
@@ -69,7 +66,7 @@ const PROFILE_SECTIONS: ReadonlyArray<{
   Icon: React.ComponentType<{ size?: number }>;
 }> = [
   { id: "profile", labelKey: "agents.sectionProfile", Icon: User },
-  { id: "persona", labelKey: "agents.sectionPersona", Icon: Sparkles },
+  { id: "persona", labelKey: "agents.sectionPersona", Icon: Drama },
   { id: "agentMemory", labelKey: "agents.sectionAgentMemory", Icon: Database },
   { id: "wallet", labelKey: "agents.sectionWallet", Icon: Wallet },
   { id: "advanced", labelKey: "agents.sectionAdvanced", Icon: Settings },
@@ -89,10 +86,18 @@ export default function ProfileModal({
   onExited,
   onChanged,
   onDeleted,
+  initialSection,
 }: ProfileModalProps): React.JSX.Element {
   const { t } = useI18n();
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
-  const [section, setSection] = useState<ProfileSection>("profile");
+  const [section, setSection] = useState<ProfileSection>(
+    initialSection ?? "profile",
+  );
+  // Re-apply on every open so a reused modal instance honours the opener's
+  // requested section (e.g. the bank ATM deep-links to "wallet").
+  useEffect(() => {
+    if (open) setSection(initialSection ?? "profile");
+  }, [open, initialSection]);
   const [error, setError] = useState("");
   const [memoryData, setMemoryData] = useState<MemoryData | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -380,7 +385,7 @@ export default function ProfileModal({
               <div className="profile-modal-pane profile-modal-memory-pane">
                 {memoryLoading && !memoryData ? (
                   <div className="profile-modal-loading">
-                    <div className="loading-spinner" />
+                    <OrbLoader state="searching" size={64} />
                   </div>
                 ) : memoryData ? (
                   <MemoryEntries
@@ -447,17 +452,17 @@ export default function ProfileModal({
             )}
           </div>
         </div>
-      ) : (
-        <div className="profile-modal-loading">
-          <div className="loading-spinner" />
-        </div>
-      )}
+        ) : (
+          <div className="profile-modal-loading">
+            <OrbLoader state="searching" size={64} />
+          </div>
+        )}
 
-      <div className="profile-modal-footer">
-        <button className="btn btn-primary btn-sm" onClick={onClose}>
-          {t("common.done")}
-        </button>
-      </div>
+        <div className="profile-modal-footer">
+          <button className="btn btn-primary btn-sm" onClick={onClose}>
+            {t("common.done")}
+          </button>
+        </div>
 
       <input
         ref={fileInputRef}

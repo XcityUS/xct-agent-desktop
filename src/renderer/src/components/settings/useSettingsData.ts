@@ -84,6 +84,7 @@ export function useSettingsData(profile?: string) {
   const [sshKeyPath, setSshKeyPath] = useState("");
   const [sshRemotePort, setSshRemotePort] = useState("");
   const [sshLocalPort, setSshLocalPort] = useState("");
+  const [sshDockerContainer, setSshDockerContainer] = useState("");
   const [transportProbe, setTransportProbe] = useState<TransportProbe | null>(
     null,
   );
@@ -173,6 +174,7 @@ export function useSettingsData(profile?: string) {
     setSshKeyPath(conn.ssh?.keyPath || "");
     setSshRemotePort(conn.ssh?.remotePort ? String(conn.ssh.remotePort) : "");
     setSshLocalPort(conn.ssh?.localPort ? String(conn.ssh.localPort) : "");
+    setSshDockerContainer(conn.ssh?.dockerContainerName || "");
     setApiServerKeyMissing(!keyStatus.hasKey);
     setAutoUpgradeEnabled(autoUpgrade);
     connLoaded.current = true;
@@ -383,6 +385,7 @@ export function useSettingsData(profile?: string) {
       sshKeyPath.trim(),
       parseInt(sshRemotePort, 10) || 8642,
       parseInt(sshLocalPort, 10) || 18642,
+      sshDockerContainer.trim(),
     );
   }
 
@@ -776,6 +779,8 @@ export function useSettingsData(profile?: string) {
     setSshKeyPath,
     sshRemotePort,
     setSshRemotePort,
+    sshDockerContainer,
+    setSshDockerContainer,
     // backup / data
     backingUp,
     backupResult,

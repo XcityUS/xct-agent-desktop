@@ -96,6 +96,10 @@ import { getAccount, clearAccount } from "../account-store";
 import * as walletApi from "../wallet";
 import * as authApi from "../auth";
 import {
+  ensureHermesOneApiKey,
+  fetchHermesOneCredits,
+} from "../hermesone-provision";
+import {
   isRemoteMode,
   isRemoteOnlyMode,
   sendMessage,
@@ -215,6 +219,10 @@ import {
   addModel,
   removeModel,
   updateModel,
+  listModelDefinitions,
+  getModelDefinition,
+  setModelDefinition,
+  removeModelDefinition,
   type SavedModel,
 } from "../models";
 import { validateChatReadiness } from "../validation";
@@ -242,6 +250,11 @@ import {
   listWallets,
   renameWallet,
 } from "../wallet-store";
+import {
+  listCustomProviders,
+  removeCustomProvider,
+  upsertCustomProvider,
+} from "../providers-store";
 import { getTokenBalances } from "../wallet-balances";
 import type { ImportWalletInput } from "../../shared/wallets";
 import {
@@ -370,12 +383,17 @@ import {
   sshRunDump,
   sshDiscoverMemoryProviders,
 } from "../ssh-remote";
+import {
+  sshInspectHermesTarget,
+  sshProvisionDockerTarget,
+} from "../ssh-docker";
 
 export interface IpcContext {
   activeRuns: Map<string, () => void>;
   getMainWindow: () => BrowserWindow | null;
   notifyConnectionConfigChanged: () => void;
   notifyModelLibraryChanged: () => void;
+  notifyCustomProvidersChanged: () => void;
   openExternalUrl: (rawUrl: unknown) => void;
 }
 
@@ -647,6 +665,7 @@ export function registerIpcHandlers(context: IpcContext): void {
     getMainWindow,
     notifyConnectionConfigChanged,
     notifyModelLibraryChanged,
+    notifyCustomProvidersChanged,
     openExternalUrl,
   } = context;
   const mainWindow = getMainWindow();
@@ -829,8 +848,8 @@ export function registerIpcHandlers(context: IpcContext): void {
   // Hermes account sign-in — OAuth 2.0 Device Authorization Grant against the
   // Hermes backend. Streams progress to the renderer's modal, opens the browser
   // approval page once the code is issued, and stores the encrypted session.
-  ipcMain.handle("hermes-account-login", (event, profile?: string) =>
-    startDeviceLogin(profile, {
+  ipcMain.handle("hermes-account-login", async (event, profile?: string) => {
+    const result = await startDeviceLogin(profile, {
       onCode: (info) => {
         if (event.sender.isDestroyed()) return;
         // Show the code in the modal, then open the browser to approve it.
@@ -841,8 +860,15 @@ export function registerIpcHandlers(context: IpcContext): void {
         if (event.sender.isDestroyed()) return;
         event.sender.send("hermes-account-login-progress", chunk);
       },
-    }),
-  );
+    });
+    // Convenience auto-provision: a fresh sign-in should yield model access
+    // without hand-adding keys. Best-effort and local-only — the key lands in
+    // the local profile `.env`, which remote/SSH chat doesn't read.
+    if (result.success && getConnectionConfig().mode === "local") {
+      void ensureHermesOneApiKey(profile).catch(() => {});
+    }
+    return result;
+  });
   ipcMain.handle("hermes-account-login-cancel", () => cancelDeviceLogin());
   ipcMain.handle("hermes-account-get", (_event, profile?: string) =>
     getAccount(profile),
@@ -851,6 +877,19 @@ export function registerIpcHandlers(context: IpcContext): void {
     clearAccount(profile);
     return { success: true };
   });
+  // Auto-provision a Hermes One Inference key from the signed-in account when
+  // the profile has none (idempotent — an existing key is never replaced, the
+  // backend shows the raw key only once). Local mode only: the key is written
+  // to the local profile `.env`, which remote/SSH chat doesn't read — issuing
+  // one there would strand an orphan key on the backend every screen visit.
+  ipcMain.handle("hermesone-ensure-key", (_event, profile?: string) => {
+    if (getConnectionConfig().mode !== "local") {
+      return { status: "error", error: "Local connections only." };
+    }
+    return ensureHermesOneApiKey(profile?.trim() || getActiveProfileNameSync());
+  });
+  // The signed-in account's AI-credit balance, shown on the account card.
+  ipcMain.handle("hermesone-credits", () => fetchHermesOneCredits());
 
   // Configuration (profile-aware)
   ipcMain.handle("get-locale", () => getAppLocale());
@@ -1221,12 +1260,21 @@ export function registerIpcHandlers(context: IpcContext): void {
       keyPath: string,
       remotePort: number,
       localPort: number,
+      dockerContainerName?: string,
     ) => {
       const current = getConnectionConfig();
       setConnectionConfig({
         ...current,
         mode: "ssh",
-        ssh: { host, port, username, keyPath, remotePort, localPort },
+        ssh: {
+          host,
+          port,
+          username,
+          keyPath,
+          remotePort,
+          localPort,
+          dockerContainerName: dockerContainerName?.trim() || "",
+        },
       });
       resetSshDashboardAvailability();
       notifyConnectionConfigChanged();
@@ -1257,6 +1305,52 @@ export function registerIpcHandlers(context: IpcContext): void {
         remotePort,
         localPort: 19642,
       }),
+  );
+
+  // Docker-backed SSH targets (issue #432): survey the remote (host install,
+  // ~/.hermes state, launcher hook, running Hermes containers) and provision
+  // the launcher hook + ~/.hermes symlink for a selected container. Both take
+  // explicit connection params so Settings/Welcome can inspect a draft config
+  // before saving it.
+  ipcMain.handle(
+    "inspect-ssh-hermes-target",
+    (
+      _event,
+      host: string,
+      port: number,
+      username: string,
+      keyPath: string,
+      remotePort: number,
+      dockerContainerName?: string,
+    ) =>
+      sshInspectHermesTarget(
+        { host, port, username, keyPath, remotePort, localPort: 19642 },
+        dockerContainerName?.trim() || "",
+      ),
+  );
+
+  ipcMain.handle(
+    "provision-ssh-docker-target",
+    async (
+      _event,
+      host: string,
+      port: number,
+      username: string,
+      keyPath: string,
+      remotePort: number,
+      dockerContainerName: string,
+    ) => {
+      const result = await sshProvisionDockerTarget(
+        { host, port, username, keyPath, remotePort, localPort: 19642 },
+        dockerContainerName,
+      );
+      if (result.ok) {
+        // The remote just gained a launcher/home it did not have — retry the
+        // dashboard probe immediately instead of waiting out the negative TTL.
+        resetSshDashboardAvailability();
+      }
+      return result;
+    },
   );
 
   ipcMain.handle("start-ssh-tunnel", async () => {
@@ -1997,6 +2091,32 @@ export function registerIpcHandlers(context: IpcContext): void {
     (_event, profile: string | undefined, id: string) =>
       deleteWallet(profile, id),
   );
+  // Custom (OpenAI-compatible) providers are desktop-local and profile-scoped.
+  // This store owns provider identity (name + base URL) so a configured
+  // provider renders as a card independent of whether a model is added yet; the
+  // key still lives in the profile `.env` and models in `models.json`.
+  ipcMain.handle("list-custom-providers", (_event, profile?: string) =>
+    listCustomProviders(profile),
+  );
+  ipcMain.handle(
+    "upsert-custom-provider",
+    (
+      _event,
+      profile: string | undefined,
+      input: { name: string; baseUrl: string },
+    ) => {
+      const record = upsertCustomProvider(profile, input);
+      notifyCustomProvidersChanged();
+      return record;
+    },
+  );
+  ipcMain.handle(
+    "remove-custom-provider",
+    (_event, profile: string | undefined, name: string) => {
+      removeCustomProvider(profile, name);
+      notifyCustomProvidersChanged();
+    },
+  );
   ipcMain.handle("get-token-balances", (_event, address: string) =>
     getTokenBalances(address),
   );
@@ -2400,7 +2520,9 @@ export function registerIpcHandlers(context: IpcContext): void {
         getActiveProfileNameSync(),
       );
     }
-    return listModels();
+    // Pass the active profile so terminal-added `custom_providers:` entries in
+    // that profile's config.yaml are merged into the library on read.
+    return listModels(getActiveProfileNameSync());
   });
   ipcMain.handle(
     "add-model",
@@ -2504,6 +2626,50 @@ export function registerIpcHandlers(context: IpcContext): void {
       return updated;
     },
   );
+
+  // Shared model definitions — per-model-id metadata (display name, context
+  // window, capabilities) reused across every provider that serves the model.
+  // Local-only, mirroring the existing scoping of the context-length override
+  // (the remote/SSH library paths never carried it); remote/ssh sessions get
+  // inert no-op results rather than an error.
+  ipcMain.handle("list-model-definitions", () => {
+    const conn = getConnectionConfig();
+    if (conn.mode === "remote" || conn.mode === "ssh") return [];
+    return listModelDefinitions();
+  });
+  ipcMain.handle("get-model-definition", (_event, model: string) => {
+    const conn = getConnectionConfig();
+    if (conn.mode === "remote" || conn.mode === "ssh") return null;
+    return getModelDefinition(model);
+  });
+  ipcMain.handle(
+    "set-model-definition",
+    (
+      _event,
+      model: string,
+      patch: {
+        name?: string;
+        contextLength?: number | null;
+        capabilities?: string[];
+        modalities?: { input?: string[]; output?: string[] };
+      },
+    ) => {
+      const conn = getConnectionConfig();
+      if (conn.mode === "remote" || conn.mode === "ssh") return null;
+      const def = setModelDefinition(model, patch);
+      // The gauge/picker read the merged model shape, so a definition change is
+      // a library change from the renderer's perspective.
+      notifyModelLibraryChanged();
+      return def;
+    },
+  );
+  ipcMain.handle("remove-model-definition", (_event, model: string) => {
+    const conn = getConnectionConfig();
+    if (conn.mode === "remote" || conn.mode === "ssh") return false;
+    const removed = removeModelDefinition(model);
+    if (removed) notifyModelLibraryChanged();
+    return removed;
+  });
 
   // Claw3D
   ipcMain.handle("claw3d-status", () => getClaw3dStatus());

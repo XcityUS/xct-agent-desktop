@@ -10,6 +10,7 @@ import type {
   WalletMutationResult,
 } from "../shared/wallets";
 import type { TokenBalancesResponse } from "../shared/tokens";
+import type { CustomProviderRecord } from "../shared/custom-providers";
 import type {
   MessagingPlatformsResponse,
   MessagingPlatformTestResponse,
@@ -18,10 +19,16 @@ import type {
 import type { ChatToolEvent } from "../shared/chat-stream";
 import type {
   DeviceCodeInfo,
+  EnsureHermesOneKeyResult,
   HermesAccount,
   HermesAccountUser,
+  HermesOneCreditsResult,
 } from "../shared/account";
 import type { GpuPreferenceMode, GpuStatus } from "../shared/gpu";
+import type {
+  SshHermesTargetInspection,
+  SshDockerProvisionResult,
+} from "../shared/ssh-docker";
 
 /**
  * Mirror of the renderer-side `CredentialPoolEntry` ambient type
@@ -199,6 +206,13 @@ const hermesAPI = {
     ipcRenderer.invoke("hermes-account-get", profile),
   accountLogout: (profile?: string): Promise<{ success: boolean }> =>
     ipcRenderer.invoke("hermes-account-logout", profile),
+  // Auto-provision a Hermes One Inference key from the signed-in account
+  // (no-op when the profile already has one), and read the account's
+  // AI-credit balance for the Providers account card.
+  ensureHermesOneKey: (profile?: string): Promise<EnsureHermesOneKeyResult> =>
+    ipcRenderer.invoke("hermesone-ensure-key", profile),
+  getHermesOneCredits: (): Promise<HermesOneCreditsResult> =>
+    ipcRenderer.invoke("hermesone-credits"),
 
   getLocale: (): Promise<AppLocale> => ipcRenderer.invoke("get-locale"),
   setLocale: (locale: AppLocale): Promise<AppLocale> =>
@@ -297,6 +311,7 @@ const hermesAPI = {
       keyPath: string;
       remotePort: number;
       localPort: number;
+      dockerContainerName?: string;
     };
   }> => ipcRenderer.invoke("get-connection-config"),
 
@@ -332,6 +347,7 @@ const hermesAPI = {
         keyPath: string;
         remotePort: number;
         localPort: number;
+        dockerContainerName?: string;
       };
     }) => void,
   ): (() => void) => {
@@ -354,6 +370,7 @@ const hermesAPI = {
             keyPath: string;
             remotePort: number;
             localPort: number;
+            dockerContainerName?: string;
           };
         },
       );
@@ -369,6 +386,7 @@ const hermesAPI = {
     keyPath: string,
     remotePort: number,
     localPort: number,
+    dockerContainerName?: string,
   ): Promise<boolean> =>
     ipcRenderer.invoke(
       "set-ssh-config",
@@ -378,6 +396,43 @@ const hermesAPI = {
       keyPath,
       remotePort,
       localPort,
+      dockerContainerName,
+    ),
+
+  inspectSshHermesTarget: (
+    host: string,
+    port: number,
+    username: string,
+    keyPath: string,
+    remotePort: number,
+    dockerContainerName?: string,
+  ): Promise<SshHermesTargetInspection> =>
+    ipcRenderer.invoke(
+      "inspect-ssh-hermes-target",
+      host,
+      port,
+      username,
+      keyPath,
+      remotePort,
+      dockerContainerName,
+    ),
+
+  provisionSshDockerTarget: (
+    host: string,
+    port: number,
+    username: string,
+    keyPath: string,
+    remotePort: number,
+    dockerContainerName: string,
+  ): Promise<SshDockerProvisionResult> =>
+    ipcRenderer.invoke(
+      "provision-ssh-docker-target",
+      host,
+      port,
+      username,
+      keyPath,
+      remotePort,
+      dockerContainerName,
     ),
 
   testRemoteConnection: (url: string, apiKey?: string): Promise<boolean> =>
@@ -841,6 +896,19 @@ const hermesAPI = {
   listWallets: (profile?: string): Promise<ProfileWallet[]> =>
     ipcRenderer.invoke("list-wallets", profile),
 
+  // Custom (OpenAI-compatible) providers, profile-scoped identity records.
+  listCustomProviders: (profile?: string): Promise<CustomProviderRecord[]> =>
+    ipcRenderer.invoke("list-custom-providers", profile),
+  upsertCustomProvider: (
+    profile: string | undefined,
+    input: { name: string; baseUrl: string },
+  ): Promise<CustomProviderRecord | null> =>
+    ipcRenderer.invoke("upsert-custom-provider", profile, input),
+  removeCustomProvider: (
+    profile: string | undefined,
+    name: string,
+  ): Promise<void> =>
+    ipcRenderer.invoke("remove-custom-provider", profile, name),
   createWallet: (
     profile?: string,
     name?: string,
@@ -1037,6 +1105,9 @@ const hermesAPI = {
       model: string;
       baseUrl: string;
       providerLabel?: string;
+      contextLength?: number;
+      capabilities?: string[];
+      modalities?: { input?: string[]; output?: string[] };
       createdAt: number;
     }>
   > => ipcRenderer.invoke("list-models"),
@@ -1078,10 +1149,63 @@ const hermesAPI = {
   ): Promise<boolean> =>
     ipcRenderer.invoke("update-model", id, fields, contextLength),
 
+  // Shared model definitions (per-model-id metadata, local-only).
+  listModelDefinitions: (): Promise<
+    Array<{
+      model: string;
+      name?: string;
+      contextLength?: number;
+      capabilities?: string[];
+      modalities?: { input?: string[]; output?: string[] };
+      createdAt: number;
+      updatedAt: number;
+    }>
+  > => ipcRenderer.invoke("list-model-definitions"),
+
+  getModelDefinition: (
+    model: string,
+  ): Promise<{
+    model: string;
+    name?: string;
+    contextLength?: number;
+    capabilities?: string[];
+    modalities?: { input?: string[]; output?: string[] };
+    createdAt: number;
+    updatedAt: number;
+  } | null> => ipcRenderer.invoke("get-model-definition", model),
+
+  setModelDefinition: (
+    model: string,
+    patch: {
+      name?: string;
+      contextLength?: number | null;
+      capabilities?: string[];
+      modalities?: { input?: string[]; output?: string[] };
+    },
+  ): Promise<{
+    model: string;
+    name?: string;
+    contextLength?: number;
+    capabilities?: string[];
+    modalities?: { input?: string[]; output?: string[] };
+    createdAt: number;
+    updatedAt: number;
+  } | null> => ipcRenderer.invoke("set-model-definition", model, patch),
+
+  removeModelDefinition: (model: string): Promise<boolean> =>
+    ipcRenderer.invoke("remove-model-definition", model),
+
   onModelLibraryChanged: (callback: () => void): (() => void) => {
     const handler = (): void => callback();
     ipcRenderer.on("model-library-changed", handler);
     return () => ipcRenderer.removeListener("model-library-changed", handler);
+  },
+
+  onCustomProvidersChanged: (callback: () => void): (() => void) => {
+    const handler = (): void => callback();
+    ipcRenderer.on("custom-providers-changed", handler);
+    return () =>
+      ipcRenderer.removeListener("custom-providers-changed", handler);
   },
 
   // Claw3D
