@@ -34,6 +34,8 @@ function commandErrorMessage(err: unknown): string {
 
 export interface ProfileInfo {
   name: string;
+  /** User-facing name for catalog profiles; `name` remains the stable id. */
+  displayName?: string;
   path: string;
   isDefault: boolean;
   isActive: boolean;
@@ -149,6 +151,7 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
 
   profiles.push({
     name: "default",
+    displayName: defaultMeta.displayName,
     path: HERMES_HOME,
     isDefault: true,
     isActive: activeName === "default",
@@ -191,6 +194,7 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
 
         return {
           name,
+          displayName: meta.displayName,
           path: profilePath,
           isDefault: false,
           isActive: activeName === name,

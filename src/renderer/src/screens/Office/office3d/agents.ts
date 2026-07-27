@@ -7,6 +7,7 @@ import type { OfficeAgent } from "./core/types";
  */
 export interface OfficeProfileInput {
   name: string;
+  displayName?: string;
   /**
    * Unique, stable identifier for the profile (the on-disk profile path from
    * `listProfiles`). Used as the agent's React key / lookup id so two profiles
@@ -53,7 +54,7 @@ export function profileToOfficeAgent(profile: OfficeProfileInput): OfficeAgent {
   const id = profile.name;
   return {
     id,
-    name: profile.name,
+    name: profile.displayName || profile.name,
     subtitle: profile.model || profile.provider || null,
     status: profile.gatewayRunning ? "working" : "idle",
     color,

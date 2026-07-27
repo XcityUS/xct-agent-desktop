@@ -3,6 +3,9 @@ export default {
   subtitle:
     "Each profile is an isolated Hermes workspace with its own config, memory, and skills",
   newAgent: "New Agent",
+  xctHomeImport: "Sync Xcity agents",
+  xctHomeImporting: "Syncing Xcity agents...",
+  xctHomeImportFailed: "Couldn't sync Xcity agents",
   namePlaceholder: "Agent name (e.g. coder)",
   createTitle: "New profile",
   nameLabel: "Agent name",

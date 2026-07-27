@@ -6,6 +6,7 @@ import { useProfileModal } from "../../components/profile/ProfileModalContext";
 
 interface ProfileInfo {
   name: string;
+  displayName?: string;
   isDefault: boolean;
   isActive: boolean;
   model: string;
@@ -102,7 +103,7 @@ export default function ProfileSwitcher({
     activeInfo?.isDefault && activeInfo.name === activeProfile;
   const label =
     activeInfo && !hasDefaultFallbackName
-      ? activeInfo.name
+      ? activeInfo.displayName || activeInfo.name
       : activeProfile === "default"
         ? t("common.appName")
         : activeProfile;
@@ -129,7 +130,7 @@ export default function ProfileSwitcher({
   const q = query.trim().toLowerCase();
   const matches = (p: ProfileInfo): boolean =>
     !q ||
-    p.name.toLowerCase().includes(q) ||
+    (p.displayName || "").toLowerCase().includes(q) ||
     p.name.toLowerCase().includes(q) ||
     (p.model || "").toLowerCase().includes(q);
   // Active profile floats to the top of its group; the rest keep list order.
@@ -183,12 +184,12 @@ export default function ProfileSwitcher({
         onMouseMove={() => setHighlight(flatIndex)}
       >
         <ProfileAvatar
-          name={p.name}
+          name={p.displayName || p.name}
           color={p.color}
           avatar={p.avatar}
           size={32}
         />
-        <span className="profile-menu-name">{p.name}</span>
+        <span className="profile-menu-name">{p.displayName || p.name}</span>
         <span className="profile-menu-model">
           {p.model || t("agents.noModel")}
         </span>

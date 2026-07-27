@@ -60,6 +60,12 @@ Renderer IPC handlers are isolated from app bootstrap so the registry can be spl
 
 Wallet and token-balance handlers sit in the same registry: `list-wallets`, `create-wallet`, `import-wallet`, `rename-wallet`, `delete-wallet` (backed by [[wallet-token-balances#Wallet Store]]) and `get-token-balances` (backed by [[wallet-token-balances#Token Balances]]).
 
+## Xcity Catalog Profiles
+
+The public Xcity agent catalog can be materialized as local profiles without exposing or depending on marketplace-internal endpoints.
+
+[[src/main/xct-home-catalog.ts#importXctHomeAgents]] fetches `https://www.xcity.one/api/catalog/agents`, rejects degraded or malformed responses, and gives every catalog agent a deterministic `xct-…` profile id. New profiles inherit the default profile's model and credential files, then receive a generated `SOUL.md` persona and catalog provenance in `profile-meta.json`. A later sync updates only profiles whose provenance id still matches; an unrelated same-name directory is skipped rather than overwritten. The `import-xct-home-agents` IPC handler exposes the operation to the Profiles screen, where users explicitly trigger the sync.
+
 ## Voice transcription IPC
 
 Speech-to-text IPC sends recorded desktop audio through the Hermes API server, not through the active chat model endpoint.

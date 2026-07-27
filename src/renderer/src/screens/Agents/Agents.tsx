@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, ChatBubble, Pencil, X } from "../../assets/icons";
+import { Plus, ChatBubble, Pencil, Refresh, X } from "../../assets/icons";
 import ProfileAvatar from "../../components/common/ProfileAvatar";
 import { AppModal, AppModalTitle } from "../../components/modal/AppModal";
 import { useI18n } from "../../components/useI18n";
@@ -8,6 +8,7 @@ import { useProfileModal } from "../../components/profile/ProfileModalContext";
 
 interface ProfileInfo {
   name: string;
+  displayName?: string;
   path: string;
   isDefault: boolean;
   isActive: boolean;
@@ -42,6 +43,7 @@ function Agents({
   // Source profile to clone config/keys/skills from when `cloneConfig` is on.
   const [cloneSource, setCloneSource] = useState("default");
   const [creating, setCreating] = useState(false);
+  const [importingXctHome, setImportingXctHome] = useState(false);
   const [error, setError] = useState("");
   // Profile whose gateway we're waiting on after a switch — drives the
   // "Starting…" status while it spins up.
@@ -137,6 +139,22 @@ function Agents({
     loadProfiles();
   }
 
+  async function handleImportXctHome(): Promise<void> {
+    setImportingXctHome(true);
+    setError("");
+    try {
+      const result = await window.hermesAPI.importXctHomeAgents();
+      if (!result.success) {
+        setError(result.error || t("agents.xctHomeImportFailed"));
+      }
+    } catch {
+      setError(t("agents.xctHomeImportFailed"));
+    } finally {
+      setImportingXctHome(false);
+      await loadProfiles();
+    }
+  }
+
   async function handleSelect(name: string): Promise<void> {
     // Show "Starting…" only when this profile's gateway isn't already up, so
     // switching to an already-running profile doesn't flash a fake spinner.
@@ -181,10 +199,22 @@ function Agents({
           <h2 className="agents-title">{t("agents.title")}</h2>
           <p className="agents-subtitle">{t("agents.subtitle")}</p>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={openCreate}>
-          <Plus size={14} />
-          {t("agents.newAgent")}
-        </button>
+        <div className="agents-header-actions">
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handleImportXctHome}
+            disabled={importingXctHome}
+          >
+            <Refresh size={14} className={importingXctHome ? "spin" : ""} />
+            {importingXctHome
+              ? t("agents.xctHomeImporting")
+              : t("agents.xctHomeImport")}
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={openCreate}>
+            <Plus size={14} />
+            {t("agents.newAgent")}
+          </button>
+        </div>
       </div>
 
       {!showCreate && error && (
@@ -250,7 +280,7 @@ function Agents({
               >
                 {profiles.map((p) => (
                   <option key={p.name} value={p.name}>
-                    {p.name}
+                    {p.displayName || p.name}
                   </option>
                 ))}
               </select>
@@ -296,13 +326,13 @@ function Agents({
           >
             <div className="agents-cell-profile">
               <ProfileAvatar
-                name={p.name}
+                name={p.displayName || p.name}
                 color={p.color}
                 avatar={p.avatar}
                 size={36}
               />
               <div className="agents-row-info">
-                <div className="agents-row-name">{p.name}</div>
+                <div className="agents-row-name">{p.displayName || p.name}</div>
                 <div className="agents-row-sub">
                   {providerLabel(p.provider)} ·{" "}
                   {t("agents.skillsCount", { count: p.skillCount })}

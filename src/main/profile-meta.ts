@@ -15,6 +15,10 @@ export interface ProfileMeta {
   color?: string;
   /** Avatar image as a data URL. When unset, a letter avatar is shown. */
   avatar?: string;
+  /** User-facing catalog name; the profile name remains the stable id. */
+  displayName?: string;
+  /** Provenance used to safely refresh profiles imported from xct-home. */
+  xctHome?: { id: string; slug: string };
 }
 
 const META_FILE = "profile-meta.json";
@@ -41,6 +45,22 @@ export async function readProfileMeta(name: string): Promise<ProfileMeta> {
       parsed.avatar.startsWith("data:image/")
     ) {
       meta.avatar = parsed.avatar;
+    }
+    if (typeof parsed.displayName === "string" && parsed.displayName.trim()) {
+      meta.displayName = parsed.displayName.trim().slice(0, 240);
+    }
+    if (
+      parsed.xctHome &&
+      typeof parsed.xctHome === "object" &&
+      typeof parsed.xctHome.id === "string" &&
+      typeof parsed.xctHome.slug === "string" &&
+      parsed.xctHome.id.trim() &&
+      parsed.xctHome.slug.trim()
+    ) {
+      meta.xctHome = {
+        id: parsed.xctHome.id.trim().slice(0, 200),
+        slug: parsed.xctHome.slug.trim().slice(0, 160),
+      };
     }
     return meta;
   } catch {
@@ -104,4 +124,17 @@ export async function removeProfileAvatar(
   } catch (err) {
     return { success: false, error: (err as Error).message };
   }
+}
+
+export async function writeXctHomeProfileMeta(
+  name: string,
+  agent: { id: string; slug: string; displayName: string },
+): Promise<void> {
+  await writeProfileMeta(name, {
+    displayName: agent.displayName.trim().slice(0, 240),
+    xctHome: {
+      id: agent.id.trim().slice(0, 200),
+      slug: agent.slug.trim().slice(0, 160),
+    },
+  });
 }

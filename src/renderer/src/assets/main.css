@@ -5589,6 +5589,12 @@ body:has(.shell-vibrant),
   gap: 8px;
 }
 
+.agents-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ── New-profile modal ── */
 .agents-create-modal {
   z-index: 301;

@@ -280,6 +280,7 @@ import {
   type RegistryKind,
   type RegistryItem,
 } from "../registry";
+import { importXctHomeAgents } from "../xct-home-catalog";
 import {
   listInstalledSkills,
   listBundledSkills,
@@ -3059,6 +3060,9 @@ export function registerIpcHandlers(context: IpcContext): void {
     (_event, kind: RegistryKind, item: RegistryItem, profile?: string) =>
       installRegistryItem(kind, item, profile),
   );
+  // Xcity's public marketplace catalog becomes local, independently usable
+  // profiles. This is intentionally local-only: it copies local credentials.
+  ipcMain.handle("import-xct-home-agents", () => importXctHomeAgents());
 
   // Memory providers
   ipcMain.handle("discover-memory-providers", (_event, profile?: string) => {

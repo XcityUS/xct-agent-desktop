@@ -27,6 +27,7 @@ import type { ProfileSection } from "./ProfileModalContext";
 /** Mirrors the entry shape returned by `window.hermesAPI.listProfiles()`. */
 interface ProfileInfo {
   name: string;
+  displayName?: string;
   path: string;
   isDefault: boolean;
   isActive: boolean;
@@ -247,7 +248,7 @@ export default function ProfileModal({
         <div className="profile-modal-header-main">
           {profile && (
             <ProfileAvatar
-              name={profile.name}
+              name={profile.displayName || profile.name}
               color={profile.color}
               avatar={profile.avatar}
               size={28}
@@ -257,7 +258,7 @@ export default function ProfileModal({
             id="profile-modal-title"
             className="profile-modal-title"
           >
-            {profile ? profile.name : name}
+            {profile ? profile.displayName || profile.name : name}
           </AppModalTitle>
         </div>
         <button
@@ -294,7 +295,7 @@ export default function ProfileModal({
                 <div className="profile-modal-identity">
                   <div className="profile-modal-avatar-wrap">
                     <ProfileAvatar
-                      name={profile.name}
+                      name={profile.displayName || profile.name}
                       color={profile.color}
                       avatar={profile.avatar}
                       size={96}
@@ -305,7 +306,9 @@ export default function ProfileModal({
                   </div>
                   <div className="profile-modal-identity-meta">
                     <div className="profile-modal-name-row">
-                      <span className="profile-modal-name">{profile.name}</span>
+                      <span className="profile-modal-name">
+                        {profile.displayName || profile.name}
+                      </span>
                       {profile.isDefault && (
                         <span className="profile-modal-tag">
                           {t("agents.defaultTag")}
@@ -452,17 +455,17 @@ export default function ProfileModal({
             )}
           </div>
         </div>
-        ) : (
-          <div className="profile-modal-loading">
-            <OrbLoader state="searching" size={64} />
-          </div>
-        )}
-
-        <div className="profile-modal-footer">
-          <button className="btn btn-primary btn-sm" onClick={onClose}>
-            {t("common.done")}
-          </button>
+      ) : (
+        <div className="profile-modal-loading">
+          <OrbLoader state="searching" size={64} />
         </div>
+      )}
+
+      <div className="profile-modal-footer">
+        <button className="btn btn-primary btn-sm" onClick={onClose}>
+          {t("common.done")}
+        </button>
+      </div>
 
       <input
         ref={fileInputRef}

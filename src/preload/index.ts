@@ -848,6 +848,7 @@ const hermesAPI = {
   listProfiles: (): Promise<
     Array<{
       name: string;
+      displayName?: string;
       path: string;
       isDefault: boolean;
       isActive: boolean;
@@ -867,6 +868,15 @@ const hermesAPI = {
     cloneFrom: string | null,
   ): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("create-profile", name, cloneFrom),
+
+  importXctHomeAgents: (): Promise<{
+    success: boolean;
+    total: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    error?: string;
+  }> => ipcRenderer.invoke("import-xct-home-agents"),
 
   deleteProfile: (
     name: string,

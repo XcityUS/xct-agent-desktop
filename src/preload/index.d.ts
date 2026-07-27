@@ -631,6 +631,7 @@ interface HermesAPI {
   listProfiles: () => Promise<
     Array<{
       name: string;
+      displayName?: string;
       path: string;
       isDefault: boolean;
       isActive: boolean;
@@ -650,6 +651,14 @@ interface HermesAPI {
     name: string,
     cloneFrom: string | null,
   ) => Promise<{ success: boolean; error?: string }>;
+  importXctHomeAgents: () => Promise<{
+    success: boolean;
+    total: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    error?: string;
+  }>;
   deleteProfile: (
     name: string,
   ) => Promise<{ success: boolean; error?: string }>;
